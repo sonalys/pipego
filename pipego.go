@@ -8,6 +8,8 @@ import (
 
 type StepFunc func(ctx context.Context) (err error)
 
+type FetchFunc[T any] func(context.Context) (*T, error)
+
 // Parallel runs all the given steps in parallel,
 // It cancels context for the first non-nil error and returns.
 // It runs 'n' go-routines at a time.
@@ -57,7 +59,7 @@ func Run(ctx context.Context, steps ...StepFunc) (err error) {
 // any non-nil value to the pointer, if no error is returned.
 // Field is supposed to be used for changing only 1 field at a time.
 // For changing more than one field at once, use `Struct`.
-func Field[T any](field *T, fetch func(context.Context) (*T, error)) func(context.Context) error {
+func Field[T any](field *T, fetch FetchFunc[T]) StepFunc {
 	return func(ctx context.Context) error {
 		if field == nil {
 			return errors.New("field pointer is nil")
@@ -75,7 +77,7 @@ func Field[T any](field *T, fetch func(context.Context) (*T, error)) func(contex
 // This function must be used with caution, because running it in parallel might cause data races.
 // Avoid calling a pipeline that modifies the same field twice in parallel.
 // If you only want to modify 1 field, use `Field`
-func Struct[T any](s *T, f func(context.Context, *T) error) func(context.Context) error {
+func Struct[T any](s *T, f func(context.Context, *T) error) StepFunc {
 	return func(ctx context.Context) error {
 		return f(ctx, s)
 	}

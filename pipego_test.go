@@ -129,7 +129,7 @@ func Test_Example1(t *testing.T) {
 		return &DatabaseObject{}, nil
 	}
 	// Adapted function for fitting inside pipego.Field wrapper.
-	adaptedFetch := func(id string) func(ctx context.Context) (*DatabaseObject, error) {
+	adaptedFetch := func(id string) pipego.FetchFunc[DatabaseObject] {
 		return func(ctx context.Context) (*DatabaseObject, error) {
 			return fetchAPI(ctx, id)
 		}
