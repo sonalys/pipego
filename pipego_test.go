@@ -2,10 +2,12 @@ package pipego_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/sonalys/pipego"
+	"github.com/sonalys/pipego/retry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -169,7 +171,7 @@ func Test_Example1(t *testing.T) {
 	}
 	// You can also easily add logic on top of it, like parallelism and retries.
 	err = pipego.Run(ctx,
-		pipego.Retry(3, pipego.LinearRetry(time.Second),
+		retry.Retry(3, retry.LinearRetry(time.Second),
 			pipego.Parallel(2,
 				pipego.Field(data.a1, adaptedFetch("a1")),
 				pipego.Field(data.a2, adaptedFetch("a2")),
@@ -189,4 +191,52 @@ func Test_Example1(t *testing.T) {
 		require.Fail(t, err.Error())
 		return
 	}
+}
+
+func Test_Aggregation(t *testing.T) {
+	type data struct {
+		values []int
+	}
+	var testData data
+	testData.values = []int{1, 2, 3, 4, 5}
+
+	ctx := context.Background()
+	var result struct {
+		sum   int
+		avg   int
+		count int
+	}
+	aggSum := func(td data) pipego.StepFunc {
+		return func(ctx context.Context) (err error) {
+			for _, v := range td.values {
+				result.sum += v
+			}
+			return nil
+		}
+	}
+	aggCount := func(td data) pipego.StepFunc {
+		return func(ctx context.Context) (err error) {
+			result.count = len(td.values)
+			return nil
+		}
+	}
+	aggAvg := func(ctx context.Context) (err error) {
+		// simple example of aggregation error.
+		if result.count == 0 {
+			return errors.New("cannot calculate average for empty slice")
+		}
+		result.avg = result.sum / result.count
+		return nil
+	}
+	// Simple example where we calculate sum and count in parallel,
+	// then we calculate average, re-utilizing previous steps result.
+	err := pipego.Run(ctx,
+		pipego.Parallel(2,
+			aggSum(testData),
+			aggCount(testData),
+		),
+		aggAvg,
+	)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, result.avg)
 }
