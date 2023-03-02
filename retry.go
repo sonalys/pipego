@@ -63,12 +63,11 @@ func ExpRetry(initialDelay, maxDelay time.Duration, exp float64) Retrier {
 
 // Retry implements a pipeline step for retrying all children steps inside.
 // If retries = -1, it will retry until it succeeds.
-func Retry(retries int, r Retrier, stages ...PipelineFunc) PipelineFunc {
+func Retry(retries int, r Retrier, steps ...StepFunc) StepFunc {
 	return func(ctx context.Context) (err error) {
-		for _, stage := range stages {
+		for _, step := range steps {
 			for n := 0; n < retries || retries == -1; n++ {
-				err = stage(ctx)
-				if err == nil {
+				if err = step(ctx); err == nil {
 					break
 				}
 				time.Sleep(r.Retry(n))

@@ -6,32 +6,32 @@ import (
 	"sync"
 )
 
-type PipelineFunc func(ctx context.Context) (err error)
+type StepFunc func(ctx context.Context) (err error)
 
-// Parallel runs all the given stages in parallel,
+// Parallel runs all the given steps in parallel,
 // It cancels context for the first non-nil error and returns.
 // It runs 'n' go-routines at a time.
-func Parallel(n uint16, stages ...PipelineFunc) PipelineFunc {
+func Parallel(n uint16, steps ...StepFunc) StepFunc {
 	return func(ctx context.Context) error {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		// Semaphore for controlling parallelism level.
 		sem := make(chan struct{}, n)
 		wg := sync.WaitGroup{}
-		wg.Add(len(stages))
+		wg.Add(len(steps))
 
 		errChan := make(chan error, 1)
-		for _, stage := range stages {
+		for _, step := range steps {
 			sem <- struct{}{}
-			go func(stage PipelineFunc) {
+			go func(step StepFunc) {
 				defer func() {
 					<-sem
 					wg.Done()
 				}()
-				if err := stage(ctx); err != nil {
+				if err := step(ctx); err != nil {
 					errChan <- err
 				}
-			}(stage)
+			}(step)
 		}
 		wg.Wait()
 		close(errChan)
@@ -41,11 +41,11 @@ func Parallel(n uint16, stages ...PipelineFunc) PipelineFunc {
 
 // Run receives a context, and runs all pipeline functions.
 // It runs until the first non-nil error or completion.
-func Run(ctx context.Context, stages ...PipelineFunc) (err error) {
+func Run(ctx context.Context, steps ...StepFunc) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	for _, stage := range stages {
-		err = stage(ctx)
+	for _, step := range steps {
+		err = step(ctx)
 		if err != nil {
 			return
 		}
