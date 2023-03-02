@@ -11,115 +11,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type pipelineData struct {
-	a int
-	b int
-	c int
-}
-
-type pipelineResponse struct {
-	sum   int
-	avg   int
-	count int
-}
-
-func aggSum(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		sum := d.a + d.b + d.c
-		return &sum, nil
-	}
-}
-
-func aggAvg(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		avg := (d.a + d.b + d.c) / 3
-		return &avg, nil
-	}
-}
-
-func aggCount(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		count := 3
-		return &count, nil
-	}
-}
-
-func fetchInt(v int) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		return &v, nil
-	}
-}
-
-func Pointer[T any](v T) *T {
-	return &v
-}
-
-func Test_Field(t *testing.T) {
+func Test_Run(t *testing.T) {
 	ctx := context.Background()
-
-	t.Run("mutating single field", func(t *testing.T) {
-		var got string
-		f := func(ctx context.Context) (*string, error) {
-			return Pointer("response"), nil
-		}
-		err := pipego.Field(&got, f)(ctx)
+	t.Run("no steps", func(t *testing.T) {
+		err := pipego.Run(ctx)
 		require.NoError(t, err)
-		require.Equal(t, "response", got)
 	})
-
-	t.Run("mutating struct", func(t *testing.T) {
-		type field struct {
-			a, b int
-		}
-		var got field
-		err := pipego.Field(&got, func(ctx context.Context) (*field, error) {
-			return &field{
-				a: 1,
-			}, nil
-		})(ctx)
+	t.Run("with steps", func(t *testing.T) {
+		run := false
+		err := pipego.Run(ctx, func(ctx context.Context) (err error) {
+			run = true
+			return
+		})
 		require.NoError(t, err)
-		require.Equal(t, field{
-			a: 1,
-		}, got)
+		require.True(t, run)
 	})
-}
-
-func Test_Struct(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("mutating one field", func(t *testing.T) {
-		type str struct {
-			a, b int
-		}
-		var got str
-		err := pipego.Struct(&got, func(ctx context.Context, t *str) error {
-			t.a = 1
-			return nil
-		})(ctx)
+	t.Run("keep step order", func(t *testing.T) {
+		var i int
+		err := pipego.Run(ctx,
+			func(ctx context.Context) (err error) {
+				require.Equal(t, 0, i)
+				i++
+				return
+			},
+			func(ctx context.Context) (err error) {
+				require.Equal(t, 1, i)
+				i++
+				return
+			},
+		)
 		require.NoError(t, err)
-		require.Equal(t, str{
-			a: 1,
-		}, got)
+		require.Equal(t, 2, i)
 	})
-	t.Run("mutating two fields", func(t *testing.T) {
-		type str struct {
-			a, b int
-		}
-		var got str
-		err := pipego.Struct(&got, func(ctx context.Context, t *str) error {
-			t.a = 1
-			return nil
-		})(ctx)
-		require.NoError(t, err)
-		err = pipego.Struct(&got, func(ctx context.Context, t *str) error {
-			t.b = 2
-			return nil
-		})(ctx)
-		require.NoError(t, err)
-		require.Equal(t, str{
-			a: 1,
-			b: 2,
-		}, got)
+	t.Run("stop on error", func(t *testing.T) {
+		err := pipego.Run(ctx,
+			func(ctx context.Context) (err error) {
+				return pipego.NilFieldError
+			},
+			func(ctx context.Context) (err error) {
+				require.Fail(t, "should not run")
+				return
+			},
+		)
+		require.Equal(t, pipego.NilFieldError, err)
 	})
 }
 

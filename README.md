@@ -152,7 +152,7 @@ func main() {
 	err := pipego.Run(ctx,
 		// Divide the slice into groups of 3 elements and process in parallel using 3 go-routines.
 		pipego.Parallel(3,
-			divide.DivideSize(data.values, 3, sumAgg)...,
+			pipego.DivideSliceInSize(data.values, 3, sumAgg)...,
 		),
 	)
 	if err != nil {
@@ -161,3 +161,8 @@ func main() {
 	println(sum) // 45
 }
 ```
+
+## Roadmap
+
+* Add load balancing for channels and maps
+* Add Timeout step
