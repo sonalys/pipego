@@ -8,45 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type pipelineData struct {
-	a int
-	b int
-	c int
-}
-
-type pipelineResponse struct {
-	sum   int
-	avg   int
-	count int
-}
-
-func aggSum(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		sum := d.a + d.b + d.c
-		return &sum, nil
-	}
-}
-
-func aggAvg(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		avg := (d.a + d.b + d.c) / 3
-		return &avg, nil
-	}
-}
-
-func aggCount(d *pipelineData) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		count := 3
-		return &count, nil
-	}
-}
-
-func fetchInt(v int) func(context.Context) (*int, error) {
-	return func(ctx context.Context) (*int, error) {
-		return &v, nil
-	}
-}
-
 func Test_Field(t *testing.T) {
 	ctx := context.Background()
 	t.Run("nil field", func(t *testing.T) {
@@ -78,5 +39,43 @@ func Test_Field(t *testing.T) {
 		require.Equal(t, field{
 			a: 1,
 		}, got)
+	})
+}
+
+func Test_Slice(t *testing.T) {
+	ctx := context.Background()
+	t.Run("nil field", func(t *testing.T) {
+		err := pipego.Slice(nil, func(ctx context.Context) ([]int, error) {
+			return nil, nil
+		})(ctx)
+		require.Equal(t, pipego.NilFieldError, err)
+	})
+	t.Run("slice", func(t *testing.T) {
+		var got []int
+		f := func(ctx context.Context) ([]int, error) {
+			return []int{1, 2, 3}, nil
+		}
+		err := pipego.Slice(&got, f)(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []int{1, 2, 3}, got)
+	})
+}
+
+func Test_Map(t *testing.T) {
+	ctx := context.Background()
+	t.Run("nil map", func(t *testing.T) {
+		err := pipego.Map(nil, func(ctx context.Context) (map[int]int, error) {
+			return nil, nil
+		})(ctx)
+		require.Equal(t, pipego.NilFieldError, err)
+	})
+	t.Run("map", func(t *testing.T) {
+		var got map[int]int
+		f := func(ctx context.Context) (map[int]int, error) {
+			return map[int]int{1: 1}, nil
+		}
+		err := pipego.Map(&got, f)(ctx)
+		require.NoError(t, err)
+		require.Equal(t, map[int]int{1: 1}, got)
 	})
 }
