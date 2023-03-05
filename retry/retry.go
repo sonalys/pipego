@@ -67,12 +67,13 @@ func ExpRetry(initialDelay, maxDelay time.Duration, exp float64) Retrier {
 // If retries = -1, it will retry until it succeeds.
 func Retry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
+		ctx = pp.ConfigureCtx(ctx, "retry")
 		for _, step := range steps {
 			for n := 0; n < retries || retries == -1; n++ {
 				if err = step(ctx); err == nil {
 					break
 				}
-				pp.Warn(ctx, err.Error())
+				pp.Warn(ctx, "retry failed #%d: %s", n+1, err.Error())
 				time.Sleep(r.Retry(n))
 			}
 			if err != nil {

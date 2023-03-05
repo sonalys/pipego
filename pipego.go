@@ -32,6 +32,7 @@ func Run(ctx context.Context, steps ...StepFunc) (report PipelineReport, err err
 	Trace(ctx, "starting Run method with %d steps", len(steps))
 	err = runSteps(ctx, steps...)
 	report.Duration = time.Since(t1)
+	Trace(ctx, "Run method finished in %s", report.Duration)
 	return
 }
 

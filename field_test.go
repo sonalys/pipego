@@ -59,6 +59,17 @@ func Test_Slice(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []int{1, 2, 3}, got)
 	})
+	t.Run("embed slice", func(t *testing.T) {
+		var got struct {
+			data []int
+		}
+		f := func(ctx context.Context) ([]int, error) {
+			return []int{1, 2, 3}, nil
+		}
+		err := pipego.Slice(&got.data, f)(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []int{1, 2, 3}, got.data)
+	})
 }
 
 func Test_Map(t *testing.T) {

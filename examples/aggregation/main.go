@@ -21,7 +21,7 @@ type ResultObject struct {
 	count int
 }
 
-func sum(result *ResultObject, td Object) pp.StepFunc {
+func sum(result *ResultObject, td *Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		for _, v := range td.values {
 			result.sum += v
@@ -30,14 +30,14 @@ func sum(result *ResultObject, td Object) pp.StepFunc {
 	}
 }
 
-func count(result *ResultObject, td Object) pp.StepFunc {
+func count(result *ResultObject, td *Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		result.count = len(td.values)
 		return nil
 	}
 }
 
-func average(result *ResultObject, td Object) pp.StepFunc {
+func average(result *ResultObject, td *Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		// simple example of aggregation error.
 		if result.count == 0 {
@@ -51,7 +51,7 @@ func average(result *ResultObject, td Object) pp.StepFunc {
 type API struct{}
 
 func (a *API) fetchData(id string) pp.FetchSlice[int] {
-	rnd := rand.New(rand.NewSource(1))
+	rnd := rand.New(rand.NewSource(2))
 	return func(ctx context.Context) ([]int, error) {
 		switch rnd.Intn(3) {
 		case 0, 1:
@@ -65,6 +65,8 @@ func (a *API) fetchData(id string) pp.FetchSlice[int] {
 func main() {
 	ctx := context.Background()
 	api := &API{}
+	// Remember to use reference when sharing the state with constructor functions,
+	// or you will get a copy, and it will never update.
 	var data Object
 	var result ResultObject
 	// Simple example where we calculate sum and count in parallel,
@@ -73,14 +75,14 @@ func main() {
 		retry.Retry(5, retry.ConstantRetry(time.Second),
 			pp.Slice(&data.values, api.fetchData("dataID"))),
 		pp.Parallel(2,
-			sum(&result, data),
-			count(&result, data),
+			sum(&result, &data),
+			count(&result, &data),
 		),
-		average(&result, data),
+		average(&result, &data),
 	)
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
+	// println(report.LogTree(pp.ErrLevelTrace))
 	fmt.Printf("Execution took %s.\n%+v\n", report.Duration, result)
-	println(report.LogTree(pp.ErrLevelTrace))
 }

@@ -38,7 +38,7 @@ func Timeout(d time.Duration, steps ...StepFunc) (out []StepFunc) {
 	timeoutID := uuid.NewString()
 	for _, step := range steps {
 		out = append(out, func(ctx context.Context) (err error) {
-			configureCtx(ctx, "timeout", timeoutID)
+			ConfigureCtx(ctx, "timeout", timeoutID)
 			startOnce.Do(setStart)
 			remainingTime := d - time.Now().Sub(startAt)
 			if remainingTime < 0 {
