@@ -16,10 +16,9 @@ This library has support for:
 
 All examples are under the [examples folder](./examples/)
 
-- [Simple pipeline](./examples/simple/main.go)
-- [Aggregation](./examples/aggregation/main.go)
+- [Simple pipeline](./examples/simple/main.go) [Field, Warnings]
+- [Aggregation](./examples/aggregation/main.go) [Slice, Parallel, Errors]
 
 ## Roadmap
 
 - Add load balancing for channels and maps
-- Add Timeout step

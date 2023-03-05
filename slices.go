@@ -9,14 +9,7 @@ import (
 // Group takes any amount of steps and return a single step that bounds them all.
 func Group(steps ...StepFunc) StepFunc {
 	return func(ctx context.Context) (err error) {
-		for _, step := range steps {
-			err = step(ctx)
-			// Exits if there is error or context is cancelled.
-			if err != nil || ctx.Err() != nil {
-				return
-			}
-		}
-		return
+		return runSteps(ctx, steps...)
 	}
 }
 

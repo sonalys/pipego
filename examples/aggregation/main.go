@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 
-	"github.com/sonalys/pipego"
+	pp "github.com/sonalys/pipego"
+	"github.com/sonalys/pipego/retry"
 )
 
 type Object struct {
@@ -18,7 +21,7 @@ type ResultObject struct {
 	count int
 }
 
-func aggSum(result *ResultObject, td Object) pipego.StepFunc {
+func sum(result *ResultObject, td Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		for _, v := range td.values {
 			result.sum += v
@@ -27,14 +30,14 @@ func aggSum(result *ResultObject, td Object) pipego.StepFunc {
 	}
 }
 
-func aggCount(result *ResultObject, td Object) pipego.StepFunc {
+func count(result *ResultObject, td Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		result.count = len(td.values)
 		return nil
 	}
 }
 
-func aggAvg(result *ResultObject, td Object) pipego.StepFunc {
+func average(result *ResultObject, td Object) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		// simple example of aggregation error.
 		if result.count == 0 {
@@ -45,24 +48,39 @@ func aggAvg(result *ResultObject, td Object) pipego.StepFunc {
 	}
 }
 
+type API struct{}
+
+func (a *API) fetchData(id string) pp.FetchSlice[int] {
+	rnd := rand.New(rand.NewSource(1))
+	return func(ctx context.Context) ([]int, error) {
+		switch rnd.Intn(3) {
+		case 0, 1:
+			return nil, errors.New("unexpected error")
+		default:
+			return []int{1, 2, 3, 4, 5}, nil
+		}
+	}
+}
+
 func main() {
 	ctx := context.Background()
-	testData := Object{
-		values: []int{1, 2, 3, 4, 5},
-	}
+	api := &API{}
+	var data Object
 	var result ResultObject
 	// Simple example where we calculate sum and count in parallel,
 	// then we calculate average, re-utilizing previous steps result.
-	report, err := pipego.Run(ctx,
-		pipego.Parallel(2,
-			aggSum(&result, testData),
-			aggCount(&result, testData),
+	report, err := pp.Run(ctx,
+		retry.Retry(5, retry.ConstantRetry(time.Second),
+			pp.Slice(&data.values, api.fetchData("dataID"))),
+		pp.Parallel(2,
+			sum(&result, data),
+			count(&result, data),
 		),
-		aggAvg(&result, testData),
+		average(&result, data),
 	)
 	if err != nil {
-		println(err.Error())
-		return
+		println("could not execute pipeline: ", err.Error())
 	}
-	fmt.Printf("execution took %s.\n%+v\n", report.Duration, result)
+	fmt.Printf("Execution took %s.\n%+v\n", report.Duration, result)
+	println(report.LogTree(pp.ErrLevelTrace))
 }

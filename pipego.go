@@ -2,7 +2,6 @@ package pipego
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -14,38 +13,39 @@ type StepFunc func(ctx context.Context) (err error)
 
 type PipelineReport struct {
 	Duration time.Duration
-	Warnings []error
+	logTree  *traceTree
 }
 
-var warnKey struct{}
+func (p PipelineReport) Logs(level ErrLevel) (out []error) {
+	return p.logTree.Errors(level)
+}
 
-func Warn(ctx context.Context, message string, args ...any) {
-	ch, ok := ctx.Value(warnKey).(chan error)
-	if !ok {
-		panic("warnings not in context")
-	}
-	ch <- fmt.Errorf(message, args...)
+func (p PipelineReport) LogTree(level ErrLevel) string {
+	return p.logTree.BuildLogTree(level, 0)
 }
 
 // Run receives a context, and runs all pipeline functions.
 // It runs until the first non-nil error or completion.
 func Run(ctx context.Context, steps ...StepFunc) (report PipelineReport, err error) {
 	t1 := time.Now()
-	var warnCh = make(chan error, 0)
-	go func() {
-		for v := range warnCh {
-			report.Warnings = append(report.Warnings, v)
+	ctx, report.logTree = initializeCtx(ctx)
+	Trace(ctx, "starting Run method with %d steps", len(steps))
+	err = runSteps(ctx, steps...)
+	report.Duration = time.Since(t1)
+	return
+}
+
+func runSteps(ctx context.Context, steps ...StepFunc) (err error) {
+	for i, step := range steps {
+		Trace(ctx, "running step[%d]", i)
+		if err = ctx.Err(); err != nil {
+			Trace(ctx, "ctx is cancelled: %s. finishing execution", err)
+			return
 		}
-	}()
-	ctx = context.WithValue(ctx, warnKey, warnCh)
-	for _, step := range steps {
-		err = step(ctx)
-		// Exits if there is error or context is cancelled.
-		if err != nil || ctx.Err() != nil {
+		if err = step(ctx); err != nil {
+			Trace(ctx, "step[%d] errored: %s. finishing execution", i, err)
 			return
 		}
 	}
-	close(warnCh)
-	report.Duration = time.Since(t1)
 	return
 }

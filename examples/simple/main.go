@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sonalys/pipego"
+	pp "github.com/sonalys/pipego"
 )
 
 // Object model from database.
@@ -16,7 +16,7 @@ func fetchAPI(ctx context.Context, id string) (*DatabaseObject, error) {
 }
 
 // wrappedFetch adapts api to pipego signature.
-func wrappedFetch(id string) pipego.FetchField[DatabaseObject] {
+func wrappedFetch(id string) pp.FetchField[DatabaseObject] {
 	return func(ctx context.Context) (*DatabaseObject, error) {
 		return fetchAPI(ctx, id)
 	}
@@ -29,12 +29,12 @@ func main() {
 		a3 DatabaseObject
 	}
 	ctx := context.Background()
-	report, err := pipego.Run(ctx,
-		pipego.Field(&data.a1, wrappedFetch("a1")),
-		pipego.Field(&data.a2, wrappedFetch("a2")),
-		pipego.Field(&data.a3, wrappedFetch("a3")),
+	report, err := pp.Run(ctx,
+		pp.Field(&data.a1, wrappedFetch("a1")),
+		pp.Field(&data.a2, wrappedFetch("a2")),
+		pp.Field(&data.a3, wrappedFetch("a3")),
 		func(ctx context.Context) (err error) {
-			pipego.Warn(ctx, "warning: %s", data.a1)
+			pp.Warn(ctx, "warning: %s", data.a1)
 			return
 		},
 	)
@@ -42,5 +42,6 @@ func main() {
 		println(err.Error())
 		return
 	}
-	fmt.Printf("execution took %s.\n%d warnings:\n%s\n", report.Duration, len(report.Warnings), report.Warnings)
+	logs := report.Logs(pp.ErrLevelWarn)
+	fmt.Printf("execution took %s.\n%d warnings:\n%s\n", report.Duration, len(logs), logs)
 }

@@ -3,6 +3,7 @@ module github.com/sonalys/pipego
 go 1.20
 
 require (
+	github.com/google/uuid v1.3.0
 	github.com/samber/lo v1.37.0
 	github.com/stretchr/testify v1.8.2
 )

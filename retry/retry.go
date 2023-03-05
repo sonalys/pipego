@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/sonalys/pipego"
+	pp "github.com/sonalys/pipego"
 )
 
 type Retrier interface {
@@ -65,14 +65,18 @@ func ExpRetry(initialDelay, maxDelay time.Duration, exp float64) Retrier {
 
 // Retry implements a pipeline step for retrying all children steps inside.
 // If retries = -1, it will retry until it succeeds.
-func Retry(retries int, r Retrier, steps ...pipego.StepFunc) pipego.StepFunc {
+func Retry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
 	return func(ctx context.Context) (err error) {
 		for _, step := range steps {
 			for n := 0; n < retries || retries == -1; n++ {
 				if err = step(ctx); err == nil {
 					break
 				}
+				pp.Warn(ctx, err.Error())
 				time.Sleep(r.Retry(n))
+			}
+			if err != nil {
+				return err
 			}
 		}
 		return err

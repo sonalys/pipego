@@ -33,7 +33,7 @@ func Test_Run(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.True(t, run)
-		require.Len(t, report.Warnings, 1)
+		require.Len(t, report.Logs, 1)
 	})
 	t.Run("with duration", func(t *testing.T) {
 		run := false
