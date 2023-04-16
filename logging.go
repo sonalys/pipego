@@ -145,6 +145,9 @@ func (ctx *ppContext) SetSection(groupName string, nodeID ...string) {
 }
 
 func (ctx ppContext) logMessage(lv ErrLevel, message string, args ...any) {
+	if lv < DefaultLoglevel {
+		return
+	}
 	e := pipelineError{
 		lv:  lv,
 		t:   time.Now(),

@@ -13,7 +13,7 @@ func Group(steps ...StepFunc) StepFunc {
 
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
-func DivideSliceInSize[State any, T any](
+func DivideSliceInSize[T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
 	for _, chunk := range lo.Chunk(s, n) {
 		batch := make([]StepFunc, len(chunk))
@@ -45,7 +45,7 @@ func divideSliceInGroups[T any](s []T, n int) [][]T {
 
 // DivideSliceInGroups receives a slice `s` and divide it into `n` groups,
 // then it uses a step factory to generate steps for each group.
-func DivideSliceInGroups[State any, T any](
+func DivideSliceInGroups[T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
 	for _, chunk := range divideSliceInGroups(s, n) {
 		batch := make([]StepFunc, len(chunk))
@@ -58,7 +58,7 @@ func DivideSliceInGroups[State any, T any](
 }
 
 // ForEach takes a slice `s` and a stepFactory, and creates a step for each element inside.
-func ForEach[State any, T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
+func ForEach[T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
 	batch := []StepFunc{}
 	for i := range s {
 		batch = append(batch, stepFactory(s[i], i))

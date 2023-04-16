@@ -16,14 +16,12 @@ type API struct{}
 
 // fetchData implements a generic data fetcher signature.
 func (a API) fetchData(_ pp.Context, id string) ([]int, error) {
-	// Here we are simply implementing a deterministic failure mechanism to test our retriability.
-	rnd := rand.New(rand.NewSource(2))
-	// 33% chance of returning a slice of integers, or failing.
-	switch rnd.Intn(3) {
-	case 0, 1:
-		return nil, errors.New("unexpected error")
-	default:
+	// Here we are simply implementing a failure mechanism to test our retriability.
+	switch n := rand.Intn(10); {
+	case n < 3:
 		return []int{1, 2, 3, 4, 5}, nil
+	default:
+		return nil, errors.New("unexpected error")
 	}
 }
 
@@ -47,9 +45,14 @@ func newPipeline(dep PipelineDependencies) Pipeline {
 	return Pipeline{dep: dep}
 }
 
-func (s *Pipeline) fetchValues(ctx pp.Context) (err error) {
-	s.values, err = s.dep.API.fetchData(ctx, "id")
-	return
+func (s *Pipeline) fetchValues(id string) pp.StepFunc {
+	return func(ctx pp.Context) (err error) {
+		s.values, err = s.dep.API.fetchData(ctx, id)
+		if err == nil {
+			ctx.Info("fetched %d objects", len(s.values))
+		}
+		return
+	}
 }
 
 func (s *Pipeline) calcSum(_ pp.Context) (err error) {
@@ -74,15 +77,15 @@ func (s *Pipeline) calcAverage(_ pp.Context) (err error) {
 }
 
 func main() {
+	pp.DefaultLoglevel = pp.ErrLevelInfo
 	ctx := context.Background()
 	api := API{}
 	pipeline := newPipeline(PipelineDependencies{
 		API: api,
 	})
-
 	r, err := pp.Run(ctx,
 		retry.Retry(retry.Inf, retry.Constant(time.Second),
-			pipeline.fetchValues,
+			pipeline.fetchValues("objectID"),
 		),
 		pp.Parallel(2,
 			pipeline.calcSum,
