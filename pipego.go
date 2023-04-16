@@ -35,11 +35,11 @@ type (
 	}
 )
 
-func (p Response) Logs(level ErrLevel) (out []error) {
+func (p Response) Logs(level LogLevelType) (out []error) {
 	return p.logTree.Errors(level)
 }
 
-func (p Response) LogTree(level ErrLevel) string {
+func (p Response) LogTree(level LogLevelType) string {
 	return p.logTree.BuildLogTree(level, 0)
 }
 

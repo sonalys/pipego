@@ -55,7 +55,7 @@ func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 }
 
 func main() {
-	pp.DefaultLoglevel = pp.ErrLevelInfo
+	pp.LogLevel = pp.Info
 	ctx := context.Background()
 	api := API{}
 	pipeline := newPipeline(PipelineDependencies{

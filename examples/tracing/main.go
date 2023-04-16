@@ -34,8 +34,8 @@ func main() {
 	if err != nil {
 		println(err.Error())
 	}
-	fmt.Printf("finished in %s with %d warnings.\n\n", report.Duration, len(report.Logs(pp.ErrLevelWarn)))
+	fmt.Printf("finished in %s with %d warnings.\n\n", report.Duration, len(report.Logs(pp.Warn)))
 
 	println("reconstructing log tree:")
-	println(report.LogTree(pp.ErrLevelTrace))
+	println(report.LogTree(pp.Trace))
 }

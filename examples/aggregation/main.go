@@ -77,7 +77,7 @@ func (s *Pipeline) calcAverage(_ pp.Context) (err error) {
 }
 
 func main() {
-	pp.DefaultLoglevel = pp.ErrLevelInfo
+	pp.LogLevel = pp.Info
 	ctx := context.Background()
 	api := API{}
 	pipeline := newPipeline(PipelineDependencies{

@@ -12,15 +12,15 @@ import (
 )
 
 var (
-	key             = struct{}{}
-	DefaultLogger   = log.Default()
-	DefaultLoglevel = ErrLevelWarn
+	key           = struct{}{}
+	DefaultLogger = log.Default()
+	LogLevel      = Warn
 )
 
 type (
-	ErrLevel      int
+	LogLevelType  int
 	pipelineError struct {
-		lv  ErrLevel
+		lv  LogLevelType
 		err string
 		t   time.Time
 	}
@@ -35,11 +35,11 @@ type (
 )
 
 const (
-	ErrLevelTrace ErrLevel = 0
-	ErrLevelDebug ErrLevel = 1
-	ErrLevelInfo  ErrLevel = 2
-	ErrLevelWarn  ErrLevel = 3
-	ErrLevelError ErrLevel = 4
+	Trace LogLevelType = 0
+	Debug LogLevelType = 1
+	Info  LogLevelType = 2
+	Warn  LogLevelType = 3
+	Error LogLevelType = 4
 )
 
 func (t *traceTree) AddLog(e pipelineError) {
@@ -60,7 +60,7 @@ func (t *traceTree) AddChild(ctx *ppContext, id, name string) {
 	ctx.Context = context.WithValue(ctx.Context, key, &t.children[len(t.children)-1])
 }
 
-func (t *traceTree) Errors(lv ErrLevel) []error {
+func (t *traceTree) Errors(lv LogLevelType) []error {
 	errs := make([]error, 0, len(t.children)+len(t.logs))
 	for i := range t.logs {
 		if t.logs[i].lv >= lv {
@@ -82,7 +82,7 @@ func (t *traceTree) getPipelineErrors() []pipelineError {
 	return out
 }
 
-func (t *traceTree) BuildLogTree(level ErrLevel, ident int) string {
+func (t *traceTree) BuildLogTree(level LogLevelType, ident int) string {
 	var b strings.Builder
 	if ident > 0 {
 		b.WriteString(strings.Repeat("\t", ident-1))
@@ -144,8 +144,8 @@ func (ctx *ppContext) SetSection(groupName string, nodeID ...string) {
 	return
 }
 
-func (ctx ppContext) logMessage(lv ErrLevel, message string, args ...any) {
-	if lv < DefaultLoglevel {
+func (ctx ppContext) logMessage(lv LogLevelType, message string, args ...any) {
+	if lv < LogLevel {
 		return
 	}
 	e := pipelineError{
@@ -154,23 +154,23 @@ func (ctx ppContext) logMessage(lv ErrLevel, message string, args ...any) {
 		err: fmt.Sprintf(message, args...),
 	}
 	getTraceTree(ctx).AddLog(e)
-	if DefaultLogger != nil && lv >= DefaultLoglevel {
+	if DefaultLogger != nil && lv >= LogLevel {
 		DefaultLogger.Print(e.err)
 	}
 }
 
 func (ctx ppContext) Trace(message string, args ...any) {
-	ctx.logMessage(ErrLevelTrace, message, args...)
+	ctx.logMessage(Trace, message, args...)
 }
 
 func (ctx ppContext) Debug(message string, args ...any) {
-	ctx.logMessage(ErrLevelDebug, message, args...)
+	ctx.logMessage(Debug, message, args...)
 }
 
 func (ctx ppContext) Info(message string, args ...any) {
-	ctx.logMessage(ErrLevelInfo, message, args...)
+	ctx.logMessage(Info, message, args...)
 }
 
 func (ctx ppContext) Warn(message string, args ...any) {
-	ctx.logMessage(ErrLevelWarn, message, args...)
+	ctx.logMessage(Warn, message, args...)
 }
