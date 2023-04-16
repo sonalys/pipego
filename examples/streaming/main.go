@@ -63,7 +63,7 @@ func main() {
 	})
 	r, err := pp.Run(ctx,
 		// Setup a simple example of a streaming response.
-		retry.Retry(retry.Inf, retry.Constant(time.Second),
+		retry.Constant(retry.Inf, time.Second,
 			pipeline.fetchValues("objectID"),
 		),
 		pp.ChanDivide(pipeline.values,

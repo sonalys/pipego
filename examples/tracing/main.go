@@ -24,7 +24,7 @@ func main() {
 				ctx.Info("parallel 2 info")
 				return
 			},
-			retry.Retry(3, retry.Constant(time.Second),
+			retry.Constant(3, time.Second,
 				func(ctx pp.Context) (err error) {
 					return errors.New("error")
 				},

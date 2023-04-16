@@ -84,7 +84,7 @@ func main() {
 		API: api,
 	})
 	r, err := pp.Run(ctx,
-		retry.Retry(retry.Inf, retry.Constant(time.Second),
+		retry.Constant(retry.Inf, time.Second,
 			pipeline.fetchValues("objectID"),
 		),
 		pp.Parallel(2,
