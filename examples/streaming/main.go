@@ -36,7 +36,7 @@ type PipelineDependencies struct {
 
 type Pipeline struct {
 	dep PipelineDependencies
-	// We need to use pointers with ChanDivide func because at initialization, the field is not setted yet.
+	// We need to use pointers with ChanDivide func because at initialization, the field is not set yet.
 	values *<-chan int
 }
 
