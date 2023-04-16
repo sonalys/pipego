@@ -1,30 +1,30 @@
-package pipego_test
+package pp_test
 
 import (
 	"context"
 	"sync"
 	"testing"
 
-	"github.com/sonalys/pipego"
+	pp "github.com/sonalys/pipego"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_Parallel(t *testing.T) {
 	ctx := context.Background()
 	t.Run("empty", func(t *testing.T) {
-		err := pipego.Parallel(5)(ctx)
+		err := pp.Parallel(5)(ctx)
 		require.NoError(t, err)
 	})
 	t.Run("0 parallelism", func(t *testing.T) {
-		err := pipego.Parallel(0)(ctx)
-		require.Equal(t, pipego.ZeroParallelismErr, err)
+		err := pp.Parallel(0)(ctx)
+		require.Equal(t, pp.ZeroParallelismErr, err)
 	})
 	t.Run("is parallel", func(t *testing.T) {
 		var wg, ready sync.WaitGroup
 		wg.Add(1)
 		ready.Add(2)
 		var a, b int
-		go pipego.Parallel(2,
+		go pp.Parallel(2,
 			func(ctx context.Context) (err error) {
 				a = 1
 				ready.Done()
@@ -49,7 +49,7 @@ func Test_Parallel(t *testing.T) {
 		ready.Add(1)
 		var a, b int
 		go require.NotPanics(t, func() {
-			err := pipego.Parallel(1,
+			err := pp.Parallel(1,
 				func(ctx context.Context) (err error) {
 					a = 1
 					ready.Done()
@@ -74,10 +74,10 @@ func Test_Parallel(t *testing.T) {
 	t.Run("context is cancelled when step errors", func(t *testing.T) {
 		var ready sync.WaitGroup
 		ready.Add(1)
-		err := pipego.Parallel(1,
+		err := pp.Parallel(1,
 			func(ctx context.Context) (err error) {
 				defer ready.Done()
-				return pipego.NilFieldError
+				return pp.NilFieldError
 			},
 			func(ctx context.Context) (err error) {
 				ready.Wait()
@@ -85,6 +85,6 @@ func Test_Parallel(t *testing.T) {
 				return nil
 			},
 		)(ctx)
-		require.Equal(t, pipego.NilFieldError, err)
+		require.Equal(t, pp.NilFieldError, err)
 	})
 }

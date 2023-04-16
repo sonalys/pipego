@@ -1,4 +1,4 @@
-package pipego
+package pp
 
 import (
 	"context"

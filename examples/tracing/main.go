@@ -6,22 +6,22 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sonalys/pipego"
+	pp "github.com/sonalys/pipego"
 	"github.com/sonalys/pipego/retry"
 )
 
 func main() {
 	ctx := context.Background()
 	// Do not print any logs in stdOut.
-	pipego.DefaultLogger = nil
-	report, err := pipego.Run(ctx,
-		pipego.Parallel(2,
+	pp.DefaultLogger = nil
+	report, err := pp.Run(ctx,
+		pp.Parallel(2,
 			func(ctx context.Context) (err error) {
-				pipego.Warn(ctx, "parallel 1 warn")
+				pp.Warn(ctx, "parallel 1 warn")
 				return
 			},
 			func(ctx context.Context) (err error) {
-				pipego.Warn(ctx, "parallel 2 warn")
+				pp.Warn(ctx, "parallel 2 warn")
 				return
 			},
 			retry.Retry(3, retry.ConstantRetry(time.Second),
@@ -34,8 +34,8 @@ func main() {
 	if err != nil {
 		println(err.Error())
 	}
-	fmt.Printf("finished in %s with %d warnings.\n\n", report.Duration, len(report.Logs(pipego.ErrLevelWarn)))
+	fmt.Printf("finished in %s with %d warnings.\n\n", report.Duration, len(report.Logs(pp.ErrLevelWarn)))
 
 	println("reconstructing log tree:")
-	println(report.LogTree(pipego.ErrLevelTrace))
+	println(report.LogTree(pp.ErrLevelTrace))
 }

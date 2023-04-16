@@ -16,9 +16,10 @@ func fetchAPI(ctx context.Context, id string) (*DatabaseObject, error) {
 }
 
 // wrappedFetch adapts api to pipego signature.
-func wrappedFetch(id string) pp.FetchField[DatabaseObject] {
-	return func(ctx context.Context) (*DatabaseObject, error) {
-		return fetchAPI(ctx, id)
+func wrappedFetch(id string, ptr *DatabaseObject) pp.StepFunc {
+	return func(ctx context.Context) (err error) {
+		ptr, err = fetchAPI(ctx, id)
+		return
 	}
 }
 
@@ -30,9 +31,9 @@ func main() {
 	}
 	ctx := context.Background()
 	report, err := pp.Run(ctx,
-		pp.Field(&data.a1, wrappedFetch("a1")),
-		pp.Field(&data.a2, wrappedFetch("a2")),
-		pp.Field(&data.a3, wrappedFetch("a3")),
+		wrappedFetch("a1", &data.a1),
+		wrappedFetch("a2", &data.a2),
+		wrappedFetch("a3", &data.a3),
 		func(ctx context.Context) (err error) {
 			pp.Warn(ctx, "warning: %s", data.a1)
 			return
