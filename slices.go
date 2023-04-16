@@ -1,21 +1,19 @@
 package pp
 
 import (
-	"context"
-
 	"github.com/samber/lo"
 )
 
 // Group takes any amount of steps and return a single step that bounds them all.
 func Group(steps ...StepFunc) StepFunc {
-	return func(ctx context.Context) (err error) {
+	return func(ctx Context) (err error) {
 		return runSteps(ctx, steps...)
 	}
 }
 
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
-func DivideSliceInSize[T any](
+func DivideSliceInSize[State any, T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
 	for _, chunk := range lo.Chunk(s, n) {
 		batch := make([]StepFunc, len(chunk))
@@ -47,7 +45,7 @@ func divideSliceInGroups[T any](s []T, n int) [][]T {
 
 // DivideSliceInGroups receives a slice `s` and divide it into `n` groups,
 // then it uses a step factory to generate steps for each group.
-func DivideSliceInGroups[T any](
+func DivideSliceInGroups[State any, T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
 	for _, chunk := range divideSliceInGroups(s, n) {
 		batch := make([]StepFunc, len(chunk))
@@ -60,7 +58,7 @@ func DivideSliceInGroups[T any](
 }
 
 // ForEach takes a slice `s` and a stepFactory, and creates a step for each element inside.
-func ForEach[T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
+func ForEach[State any, T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
 	batch := []StepFunc{}
 	for i := range s {
 		batch = append(batch, stepFactory(s[i], i))

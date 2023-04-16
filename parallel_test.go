@@ -1,7 +1,7 @@
 package pp_test
 
 import (
-	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -10,7 +10,7 @@ import (
 )
 
 func Test_Parallel(t *testing.T) {
-	ctx := context.Background()
+	ctx := pp.NewContext()
 	t.Run("empty", func(t *testing.T) {
 		err := pp.Parallel(5)(ctx)
 		require.NoError(t, err)
@@ -23,41 +23,47 @@ func Test_Parallel(t *testing.T) {
 		var wg, ready sync.WaitGroup
 		wg.Add(1)
 		ready.Add(2)
-		var a, b int
+		type state struct {
+			a, b int
+		}
+		var s state
 		go pp.Parallel(2,
-			func(ctx context.Context) (err error) {
-				a = 1
+			func(_ pp.Context) (err error) {
+				s.a = 1
 				ready.Done()
 				wg.Wait()
 				return nil
 			},
-			func(ctx context.Context) (err error) {
-				b = 2
+			func(_ pp.Context) (err error) {
+				s.b = 2
 				ready.Done()
 				wg.Wait()
 				return nil
 			},
 		)(ctx)
 		ready.Wait()
-		require.Equal(t, 1, a)
-		require.Equal(t, 2, b)
+		require.Equal(t, 1, s.a)
+		require.Equal(t, 2, s.b)
 		wg.Done()
 	})
 	t.Run("runs at the specified parallelism number", func(t *testing.T) {
 		var wg, ready sync.WaitGroup
 		wg.Add(1)
 		ready.Add(1)
-		var a, b int
+		type state struct {
+			a, b int
+		}
+		var s state
 		go require.NotPanics(t, func() {
 			err := pp.Parallel(1,
-				func(ctx context.Context) (err error) {
-					a = 1
+				func(_ pp.Context) (err error) {
+					s.a = 1
 					ready.Done()
 					wg.Wait()
 					return nil
 				},
-				func(ctx context.Context) (err error) {
-					b = 2
+				func(_ pp.Context) (err error) {
+					s.b = 2
 					ready.Done() // If you set parallelism = 2 you will see this panics, because weight is 1.
 					wg.Wait()
 					return nil
@@ -66,8 +72,8 @@ func Test_Parallel(t *testing.T) {
 			require.NoError(t, err)
 		})
 		ready.Wait()
-		require.Equal(t, 1, a)
-		require.Equal(t, 0, b)
+		require.Equal(t, 1, s.a)
+		require.Equal(t, 0, s.b)
 		ready.Add(1)
 		wg.Done()
 	})
@@ -75,16 +81,16 @@ func Test_Parallel(t *testing.T) {
 		var ready sync.WaitGroup
 		ready.Add(1)
 		err := pp.Parallel(1,
-			func(ctx context.Context) (err error) {
+			func(_ pp.Context) (err error) {
 				defer ready.Done()
-				return pp.NilFieldError
+				return fmt.Errorf("mock")
 			},
-			func(ctx context.Context) (err error) {
+			func(_ pp.Context) (err error) {
 				ready.Wait()
 				require.Error(t, ctx.Err())
 				return nil
 			},
 		)(ctx)
-		require.Equal(t, pp.NilFieldError, err)
+		require.Equal(t, fmt.Errorf("mock"), err)
 	})
 }

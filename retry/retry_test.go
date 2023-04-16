@@ -9,21 +9,21 @@ import (
 )
 
 func Test_ConstantRetry(t *testing.T) {
-	cr := retry.ConstantRetry(time.Second)
+	cr := retry.Constant(time.Second)
 	for i := 1; i <= 10; i++ {
 		require.Equal(t, cr.Retry(i), time.Second)
 	}
 }
 
 func Test_LinearRetry(t *testing.T) {
-	lr := retry.LinearRetry(time.Second)
+	lr := retry.Linear(time.Second)
 	for i := 1; i <= 10; i++ {
 		require.Equal(t, lr.Retry(i), time.Duration(i)*time.Second)
 	}
 }
 
 func Test_ExpRetry(t *testing.T) {
-	er := retry.ExpRetry(time.Second, 10*time.Second, 2)
+	er := retry.Exp(time.Second, 10*time.Second, 2)
 	expSlice := []time.Duration{
 		1 * time.Second,  // 0 ^ 2 + 1 = 1s
 		2 * time.Second,  // 1 ^ 2 + 1 = 2s

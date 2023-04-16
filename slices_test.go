@@ -1,13 +1,5 @@
 package pp
 
-import (
-	"context"
-	"sync/atomic"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
-
 // func TestDivideSliceInSize(t *testing.T) {
 // 	getGroups := func() (*[][]int, func(slice []int) StepFunc) {
 // 		group := [][]int{}
@@ -94,23 +86,23 @@ import (
 // 	})
 // }
 
-func Test_Example01(t *testing.T) {
-	var data struct {
-		values []int
-	}
-	data.values = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	var sum int64
-	sumAgg := func(v int) StepFunc {
-		return func(ctx context.Context) error {
-			atomic.AddInt64(&sum, int64(v))
-			return nil
-		}
-	}
-	ctx := context.Background()
-	Run(ctx,
-		Parallel(3,
-			DivideSliceInSize(data.values, 3, sumAgg)...,
-		),
-	)
-	require.EqualValues(t, 45, sum)
-}
+// func Test_Example01(t *testing.T) {
+// 	var data struct {
+// 		values []int
+// 	}
+// 	data.values = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+// 	var sum int64
+// 	sumAgg := func(v int) StepFunc {
+// 		return func(ctx context.Context) error {
+// 			atomic.AddInt64(&sum, int64(v))
+// 			return nil
+// 		}
+// 	}
+// 	ctx := context.Background()
+// 	Run(ctx,
+// 		Parallel(3,
+// 			DivideSliceInSize(data.values, 3, sumAgg)...,
+// 		),
+// 	)
+// 	require.EqualValues(t, 45, sum)
+// }

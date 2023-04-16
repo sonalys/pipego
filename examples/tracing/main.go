@@ -16,16 +16,16 @@ func main() {
 	pp.DefaultLogger = nil
 	report, err := pp.Run(ctx,
 		pp.Parallel(2,
-			func(ctx context.Context) (err error) {
-				pp.Warn(ctx, "parallel 1 warn")
+			func(ctx pp.Context) (err error) {
+				ctx.Warn("parallel 1 warn")
 				return
 			},
-			func(ctx context.Context) (err error) {
-				pp.Warn(ctx, "parallel 2 warn")
+			func(ctx pp.Context) (err error) {
+				ctx.Info("parallel 2 info")
 				return
 			},
-			retry.Retry(3, retry.ConstantRetry(time.Second),
-				func(ctx context.Context) (err error) {
+			retry.Retry(3, retry.Constant(time.Second),
+				func(ctx pp.Context) (err error) {
 					return errors.New("error")
 				},
 			),

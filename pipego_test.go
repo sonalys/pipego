@@ -2,6 +2,7 @@ package pp_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ func Test_Run(t *testing.T) {
 	})
 	t.Run("with steps", func(t *testing.T) {
 		run := false
-		_, err := pp.Run(ctx, func(ctx context.Context) (err error) {
+		_, err := pp.Run(ctx, func(_ pp.Context) (err error) {
 			run = true
 			return
 		})
@@ -26,39 +27,39 @@ func Test_Run(t *testing.T) {
 	})
 	t.Run("with warnings", func(t *testing.T) {
 		run := false
-		report, err := pp.Run(ctx, func(ctx context.Context) (err error) {
+		r, err := pp.Run(ctx, func(ctx pp.Context) (err error) {
 			run = true
-			pp.Warn(ctx, "warn")
+			ctx.Warn("warn")
 			return
 		})
 		require.NoError(t, err)
 		require.True(t, run)
-		require.Len(t, report.Logs, 1)
+		require.Len(t, r.Logs(pp.ErrLevelWarn), 1)
 	})
 	t.Run("with duration", func(t *testing.T) {
 		run := false
 		delay := 100 * time.Millisecond
-		report, err := pp.Run(ctx, func(ctx context.Context) (err error) {
+		r, err := pp.Run(ctx, func(_ pp.Context) (err error) {
 			run = true
 			time.Sleep(delay)
 			return
 		})
 		require.NoError(t, err)
 		require.True(t, run)
-		require.InDelta(t, delay, report.Duration, float64(delay)*0.1)
+		require.InDelta(t, delay, r.Duration, float64(delay)*0.1)
 	})
 	t.Run("keep step order", func(t *testing.T) {
 		var i int
 		_, err := pp.Run(ctx,
-			func(ctx context.Context) (err error) {
+			func(_ pp.Context) (err error) {
 				require.Equal(t, 0, i)
 				i++
-				return
+				return err
 			},
-			func(ctx context.Context) (err error) {
+			func(_ pp.Context) (err error) {
 				require.Equal(t, 1, i)
 				i++
-				return
+				return err
 			},
 		)
 		require.NoError(t, err)
@@ -66,14 +67,14 @@ func Test_Run(t *testing.T) {
 	})
 	t.Run("stop on error", func(t *testing.T) {
 		_, err := pp.Run(ctx,
-			func(ctx context.Context) (err error) {
-				return pp.NilFieldError
+			func(_ pp.Context) (err error) {
+				return fmt.Errorf("mock")
 			},
-			func(ctx context.Context) (err error) {
+			func(_ pp.Context) (err error) {
 				require.Fail(t, "should not run")
 				return
 			},
 		)
-		require.Equal(t, pp.NilFieldError, err)
+		require.Equal(t, fmt.Errorf("mock"), err)
 	})
 }

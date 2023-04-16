@@ -11,78 +11,88 @@ import (
 	"github.com/sonalys/pipego/retry"
 )
 
-type Object struct {
-	values []int
-}
-
-type ResultObject struct {
-	sum   int
-	avg   int
-	count int
-}
-
-func sum(result *ResultObject, td *Object) pp.StepFunc {
-	return func(ctx context.Context) (err error) {
-		for _, v := range td.values {
-			result.sum += v
-		}
-		return nil
-	}
-}
-
-func count(result *ResultObject, td *Object) pp.StepFunc {
-	return func(ctx context.Context) (err error) {
-		result.count = len(td.values)
-		return nil
-	}
-}
-
-func average(result *ResultObject, td *Object) pp.StepFunc {
-	return func(ctx context.Context) (err error) {
-		// simple example of aggregation error.
-		if result.count == 0 {
-			return errors.New("cannot calculate average for empty slice")
-		}
-		result.avg = result.sum / result.count
-		return nil
-	}
-}
-
+// API is a generic API implementation.
 type API struct{}
 
-func (a *API) fetchData(id string) pp.FetchSlice[int] {
+// fetchData implements a generic data fetcher signature.
+func (a API) fetchData(_ pp.Context, id string) ([]int, error) {
+	// Here we are simply implementing a deterministic failure mechanism to test our retriability.
 	rnd := rand.New(rand.NewSource(2))
-	return func(ctx context.Context) ([]int, error) {
-		switch rnd.Intn(3) {
-		case 0, 1:
-			return nil, errors.New("unexpected error")
-		default:
-			return []int{1, 2, 3, 4, 5}, nil
-		}
+	// 33% chance of returning a slice of integers, or failing.
+	switch rnd.Intn(3) {
+	case 0, 1:
+		return nil, errors.New("unexpected error")
+	default:
+		return []int{1, 2, 3, 4, 5}, nil
 	}
+}
+
+type PipelineDependencies struct {
+	API interface {
+		fetchData(_ pp.Context, id string) ([]int, error)
+	}
+}
+
+type Pipeline struct {
+	dep PipelineDependencies
+
+	values []int
+
+	Sum   int
+	AVG   int
+	Count int
+}
+
+func newPipeline(dep PipelineDependencies) Pipeline {
+	return Pipeline{dep: dep}
+}
+
+func (s *Pipeline) fetchValues(ctx pp.Context) (err error) {
+	s.values, err = s.dep.API.fetchData(ctx, "id")
+	return
+}
+
+func (s *Pipeline) calcSum(_ pp.Context) (err error) {
+	for _, v := range s.values {
+		s.Sum += v
+	}
+	return
+}
+
+func (s *Pipeline) calcCount(_ pp.Context) (err error) {
+	s.Count = len(s.values)
+	return
+}
+
+func (s *Pipeline) calcAverage(_ pp.Context) (err error) {
+	// simple example of aggregation error.
+	if s.Count == 0 {
+		return errors.New("cannot calculate average for empty slice")
+	}
+	s.AVG = s.Sum / s.Count
+	return
 }
 
 func main() {
 	ctx := context.Background()
-	api := &API{}
-	// Remember to use reference when sharing the state with constructor functions,
-	// or you will get a copy, and it will never update.
-	var data Object
-	var result ResultObject
-	// Simple example where we calculate sum and count in parallel,
-	// then we calculate average, re-utilizing previous steps result.
-	report, err := pp.Run(ctx,
-		retry.Retry(5, retry.ConstantRetry(time.Second),
-			pp.Slice(&data.values, api.fetchData("dataID"))),
-		pp.Parallel(2,
-			sum(&result, &data),
-			count(&result, &data),
+	api := API{}
+	pipeline := newPipeline(PipelineDependencies{
+		API: api,
+	})
+
+	r, err := pp.Run(ctx,
+		retry.Retry(retry.Inf, retry.Constant(time.Second),
+			pipeline.fetchValues,
 		),
-		average(&result, &data),
+		pp.Parallel(2,
+			pipeline.calcSum,
+			pipeline.calcCount,
+		),
+		pipeline.calcAverage,
 	)
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
 	// println(report.LogTree(pp.ErrLevelTrace))
-	fmt.Printf("Execution took %s.\n%+v\n", report.Duration, result)
+	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, pipeline)
 }

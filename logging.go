@@ -11,9 +11,28 @@ import (
 	"github.com/google/uuid"
 )
 
-var key = struct{}{}
+var (
+	key             = struct{}{}
+	DefaultLogger   = log.Default()
+	DefaultLoglevel = ErrLevelWarn
+)
 
-type ErrLevel int
+type (
+	ErrLevel      int
+	pipelineError struct {
+		lv  ErrLevel
+		err string
+		t   time.Time
+	}
+	traceTree struct {
+		id        string
+		name      string
+		logs      []pipelineError
+		children  []traceTree
+		lock      sync.Mutex
+		createdAt time.Time
+	}
+)
 
 const (
 	ErrLevelTrace ErrLevel = 0
@@ -23,22 +42,13 @@ const (
 	ErrLevelError ErrLevel = 4
 )
 
-type traceTree struct {
-	id        string
-	name      string
-	logs      []pipelineError
-	children  []traceTree
-	lock      sync.Mutex
-	createdAt time.Time
-}
-
 func (t *traceTree) AddLog(e pipelineError) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.logs = append(t.logs, e)
 }
 
-func (t *traceTree) AddChild(ctx context.Context, id, name string) context.Context {
+func (t *traceTree) AddChild(ctx *ppContext, id, name string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.children = append(t.children, traceTree{
@@ -47,7 +57,7 @@ func (t *traceTree) AddChild(ctx context.Context, id, name string) context.Conte
 		lock:      sync.Mutex{},
 		createdAt: time.Now(),
 	})
-	return context.WithValue(ctx, key, &t.children[len(t.children)-1])
+	ctx.Context = context.WithValue(ctx.Context, key, &t.children[len(t.children)-1])
 }
 
 func (t *traceTree) Errors(lv ErrLevel) []error {
@@ -92,31 +102,25 @@ func (t *traceTree) BuildLogTree(level ErrLevel, ident int) string {
 	return b.String()
 }
 
-type pipelineError struct {
-	lv  ErrLevel
-	err string
-	t   time.Time
-}
-
 func (e pipelineError) Error() string {
 	return fmt.Sprintf("%s: %s", e.t.Format(time.RFC3339), e.err)
 }
 
-func initializeCtx(ctx context.Context) (context.Context, *traceTree) {
+func initializeCtx(old context.Context) (*ppContext, *traceTree) {
+	ctx := ppContext{old}
 	tree, ok := ctx.Value(key).(*traceTree)
 	// In case we are running nested Run commands, we can still rebuild chain of logs from the true root.
-	if ok {
-		ctx = ConfigureCtx(ctx, "run")
-	} else {
+	if !ok {
 		tree = &traceTree{
 			id:        uuid.NewString(),
 			name:      "root",
 			lock:      sync.Mutex{},
 			createdAt: time.Now(),
 		}
-		ctx = context.WithValue(ctx, key, tree)
+		ctx = ppContext{context.WithValue(ctx, key, tree)}
 	}
-	return ctx, tree
+	ctx.SetSection("run")
+	return &ctx, tree
 }
 
 func getTraceTree(ctx context.Context) *traceTree {
@@ -127,8 +131,8 @@ func getTraceTree(ctx context.Context) *traceTree {
 	return tree
 }
 
-// ConfigureCtx changes context values to reference old node id as parent, and new node id as current.
-func ConfigureCtx(ctx context.Context, groupName string, nodeID ...string) context.Context {
+// SetSection changes context values to reference old node id as parent, and new node id as current.
+func (ctx *ppContext) SetSection(groupName string, nodeID ...string) {
 	tree := getTraceTree(ctx)
 	var id string
 	if len(nodeID) > 0 {
@@ -136,13 +140,11 @@ func ConfigureCtx(ctx context.Context, groupName string, nodeID ...string) conte
 	} else {
 		id = uuid.NewString()
 	}
-	return tree.AddChild(ctx, id, groupName)
+	tree.AddChild(ctx, id, groupName)
+	return
 }
 
-var DefaultLogger = log.Default()
-var DefaultLoglevel = ErrLevelWarn
-
-func logMessage(ctx context.Context, lv ErrLevel, message string, args ...any) {
+func (ctx ppContext) logMessage(lv ErrLevel, message string, args ...any) {
 	e := pipelineError{
 		lv:  lv,
 		t:   time.Now(),
@@ -154,18 +156,18 @@ func logMessage(ctx context.Context, lv ErrLevel, message string, args ...any) {
 	}
 }
 
-func Trace(ctx context.Context, message string, args ...any) {
-	logMessage(ctx, ErrLevelTrace, message, args...)
+func (ctx ppContext) Trace(message string, args ...any) {
+	ctx.logMessage(ErrLevelTrace, message, args...)
 }
 
-func Debug(ctx context.Context, message string, args ...any) {
-	logMessage(ctx, ErrLevelDebug, message, args...)
+func (ctx ppContext) Debug(message string, args ...any) {
+	ctx.logMessage(ErrLevelDebug, message, args...)
 }
 
-func Info(ctx context.Context, message string, args ...any) {
-	logMessage(ctx, ErrLevelInfo, message, args...)
+func (ctx ppContext) Info(message string, args ...any) {
+	ctx.logMessage(ErrLevelInfo, message, args...)
 }
 
-func Warn(ctx context.Context, message string, args ...any) {
-	logMessage(ctx, ErrLevelWarn, message, args...)
+func (ctx ppContext) Warn(message string, args ...any) {
+	ctx.logMessage(ErrLevelWarn, message, args...)
 }

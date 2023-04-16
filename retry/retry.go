@@ -1,12 +1,13 @@
 package retry
 
 import (
-	"context"
 	"math"
 	"time"
 
 	pp "github.com/sonalys/pipego"
 )
+
+const Inf = -1
 
 type Retrier interface {
 	Retry(retryNumber int) time.Duration
@@ -20,10 +21,10 @@ func (r constantRetry) Retry(n int) time.Duration {
 	return r.Duration
 }
 
-// ConstantRetry is a constant retry implementation.
+// Constant is a constant retry implementation.
 // It always return the same delay.
 // Example: 2s: 2s, 2s, 2s, 2s...
-func ConstantRetry(delay time.Duration) Retrier {
+func Constant(delay time.Duration) Retrier {
 	return constantRetry{delay}
 }
 
@@ -35,10 +36,10 @@ func (r linearRetry) Retry(n int) time.Duration {
 	return r.Duration * time.Duration(n)
 }
 
-// LinearRetry is a linear retry implementation.
+// Linear is a linear retry implementation.
 // It returns a linear series for the delay calculation.
 // Example: 1s: 1s, 2s, 3s, 4s, ...
-func LinearRetry(delay time.Duration) Retrier {
+func Linear(delay time.Duration) Retrier {
 	return linearRetry{delay}
 }
 
@@ -56,24 +57,24 @@ func (r expRetry) Retry(n int) time.Duration {
 	return delay
 }
 
-// ExpRetry is a exponential retry implementation.
+// Exp is a exponential retry implementation.
 // Given an initialDelay, it does (initialDelay * n) ^ exp.
 // Example: n ^ 2 + 1s = 1s, 3s, 9s...
-func ExpRetry(initialDelay, maxDelay time.Duration, exp float64) Retrier {
+func Exp(initialDelay, maxDelay time.Duration, exp float64) Retrier {
 	return expRetry{initialDelay, maxDelay, exp}
 }
 
 // Retry implements a pipeline step for retrying all children steps inside.
 // If retries = -1, it will retry until it succeeds.
 func Retry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
-	return func(ctx context.Context) (err error) {
-		ctx = pp.ConfigureCtx(ctx, "retry")
+	return func(ctx pp.Context) (err error) {
+		ctx.SetSection("retry")
 		for _, step := range steps {
 			for n := 0; n < retries || retries == -1; n++ {
 				if err = step(ctx); err == nil {
 					break
 				}
-				pp.Warn(ctx, "retry failed #%d: %s", n+1, err.Error())
+				ctx.Warn("retry failed #%d: %s", n+1, err.Error())
 				time.Sleep(r.Retry(n))
 			}
 			if err != nil {
