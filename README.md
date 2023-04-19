@@ -85,9 +85,7 @@ type pipeline struct {
 
 func (p *pipeline) fetchInput(id string) pp.StepFunc {
 	return func(ctx pp.Context) (err error) {
-		ctx.Debug("fetching data for id: %s", id)
 		p.input, err = p.API.fetch(ctx, id)
-		ctx.Debug("response is %d with err: %v", p.input, err)
 		return
 	}
 }
@@ -104,7 +102,6 @@ func (p *pipeline) sqrInput(ctx pp.Context) (err error) {
 
 func main() {
 	ctx := context.Background()
-	pp.LogLevel = pp.Error
 	p := pipeline{
 		API: api{},
 	}
@@ -124,21 +121,15 @@ func main() {
 	// Execution took 82.54µs.
 	// main.pipeline{API:main.api{}, input:4, sum:8, square:16}
 }
-
 ```
 
 ## Logging
 
-You can use pipego.Context to log any errors and divide your code into sections.
+To get Pipego working with your favorite logger, you just need to instantiate a new logger providing the
+io.Writer you get from `ctx.GetWriter()`.
 
-You can set the log level and output with:
-
-```go
-func main() {
- pp.DefaultLogger = nil
- pp.LogLevel = pp.Error
-}
-```
+With this configuration, you can segment your logs by sections, easily visualize parallelization and multiple log
+instances.
 
 ```go
 func getLogger(ctx pp.Context) zerolog.Logger {
@@ -185,3 +176,15 @@ func main() {
 }
 
 ```
+
+## Contributions
+
+With Pipego, I aim to offer a sufficient framework for facilitating any popular pipeline flows.
+If you have any ideas, feel free to open an issue
+and discuss it's implementation with me.
+
+Writing more unit tests and fixing any possible bugs would also be nice from any developer.
+
+## Disclaimer
+
+This library is not stable yet, and it's not production ready.
