@@ -43,7 +43,8 @@ type Pipeline struct {
 
 func newPipeline(dep PipelineDependencies) Pipeline {
 	return Pipeline{
-		dep: dep,
+		dep:    dep,
+		values: make(<-chan int),
 	}
 }
 
@@ -66,7 +67,7 @@ func main() {
 		retry.Constant(retry.Inf, time.Second,
 			pipeline.fetchValues("objectID"),
 		),
-		pp.ChanDivide(pipeline.values,
+		pp.ChanDivide(&pipeline.values,
 			func(ctx pp.Context, i int) (err error) {
 				ctx.Info("got value on worker 1: %d", i)
 				return
@@ -82,6 +83,18 @@ func main() {
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
-	// println(report.LogTree(pp.ErrLevelTrace))
 	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, pipeline)
+	// go run examples/streaming/main.go                                                                            1 ↵
+	// 2023/04/19 09:32:02 got value on worker 2: 5
+	// 2023/04/19 09:32:03 got value on worker 1: 5
+	// 2023/04/19 09:32:04 got value on worker 1: 3
+	// 2023/04/19 09:32:05 got value on worker 2: 1
+	// 2023/04/19 09:32:06 got value on worker 1: 3
+	// 2023/04/19 09:32:07 got value on worker 1: 6
+	// 2023/04/19 09:32:08 got value on worker 2: 4
+	// 2023/04/19 09:32:09 got value on worker 1: 9
+	// 2023/04/19 09:32:10 got value on worker 1: 8
+	// 2023/04/19 09:32:11 got value on worker 1: 2
+	// 2023/04/19 09:32:12 got value on worker 2: 2
+	// Execution took 12.00069829s.
 }

@@ -96,6 +96,8 @@ func main() {
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
-	// println(report.LogTree(pp.ErrLevelTrace))
 	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, pipeline)
+	// 2023/04/19 09:24:46 fetched 5 objects
+	// Execution took 157.831µs.
+	// {dep:{API:{}} values:[1 2 3 4 5] Sum:15 AVG:3 Count:5}
 }

@@ -63,4 +63,6 @@ func main() {
 		println(err.Error())
 	}
 	fmt.Printf("Execution took %s.\n%#v\n", r.Duration, p)
+	// Execution took 82.54µs.
+	// main.pipeline{API:main.api{}, input:4, sum:8, square:16}
 }
