@@ -13,6 +13,7 @@ func Group(steps ...StepFunc) StepFunc {
 
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
+// `n` must be greater than 0 or it will panic.
 func DivideSliceInSize[T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
 	for _, chunk := range lo.Chunk(s, n) {

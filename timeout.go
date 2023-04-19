@@ -10,42 +10,38 @@ import (
 
 var TimeoutErr = errors.New("timeout")
 
-// cancellableStep is an utility function to help wait steps until step is executed or context is done.
-func cancellableStep(ctx Context, step StepFunc) error {
-	out := make(chan error, 1)
-	go func() {
-		out <- step(ctx)
-	}()
-	select {
-	case <-ctx.Done():
-		return nil
-	case err := <-out:
-		return err
-	}
-}
-
 // Timeout limits all children steps to execute in the given duration,
 // the timer starts when the first step is run.
 // All steps shares the same timeout.
 func Timeout(d time.Duration, steps ...StepFunc) (out []StepFunc) {
 	out = make([]StepFunc, 0, len(steps))
-	var startAt time.Time
-	var startOnce *sync.Once
-	setStart := func() {
-		startAt = time.Now()
-	}
+	var once sync.Once
+	var timer *time.Timer
 	timeoutID := uuid.NewString()
 	for _, step := range steps {
 		out = append(out, func(ctx Context) (err error) {
 			ctx.SetSection("timeout", timeoutID)
-			startOnce.Do(setStart)
-			remainingTime := d - time.Now().Sub(startAt)
-			if remainingTime < 0 {
+			// Sets a cancellable context bounded to a unique timer, started when the first step is run.
+			ctx, cancel := ctx.WithCancelCause()
+			once.Do(func() {
+				timer = time.NewTimer(d)
+			})
+			out := make(chan error, 1)
+			defer close(out)
+			go func() {
+				out <- step(ctx)
+			}()
+			// Select gets the first channel to return a result,
+			// either context cancellation, timeout or response from step.
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				cancel(TimeoutErr)
 				return TimeoutErr
+			case err := <-out:
+				return err
 			}
-			ctx, cancel := ctx.WithTimeout(remainingTime)
-			defer cancel()
-			return cancellableStep(ctx, step)
 		})
 	}
 	return

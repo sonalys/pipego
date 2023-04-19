@@ -17,6 +17,7 @@ type API struct{}
 func (a API) fetchData(ctx pp.Context, id string) <-chan int {
 	ch := make(chan int)
 	ctx, cancel := ctx.WithTimeout(10 * time.Second)
+	// Note that if this wasn't async, both fetch and chanDivide would need to be insire parallel stage.
 	go func() {
 		defer cancel()
 		defer close(ch)
@@ -37,19 +38,18 @@ type PipelineDependencies struct {
 type Pipeline struct {
 	dep PipelineDependencies
 	// We need to use pointers with ChanDivide func because at initialization, the field is not set yet.
-	values *<-chan int
+	values <-chan int
 }
 
 func newPipeline(dep PipelineDependencies) Pipeline {
 	return Pipeline{
-		dep:    dep,
-		values: new(<-chan int),
+		dep: dep,
 	}
 }
 
 func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 	return func(ctx pp.Context) (err error) {
-		*s.values = s.dep.API.fetchData(ctx, id)
+		s.values = s.dep.API.fetchData(ctx, id)
 		return
 	}
 }

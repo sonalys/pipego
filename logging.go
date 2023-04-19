@@ -12,9 +12,11 @@ import (
 )
 
 var (
-	key           = struct{}{}
+	key = struct{}{}
+	// DefaultLogger specifies the logger which will be used to output pipeline logs.
 	DefaultLogger = log.Default()
-	LogLevel      = Warn
+	// LogLevel defines which level will be output to the logger.
+	LogLevel = Warn
 )
 
 type (
@@ -35,31 +37,21 @@ type (
 )
 
 const (
-	Trace LogLevelType = 0
-	Debug LogLevelType = 1
-	Info  LogLevelType = 2
-	Warn  LogLevelType = 3
-	Error LogLevelType = 4
+	Trace LogLevelType = iota
+	Debug
+	Info
+	Warn
+	Error
 )
 
-func (t *traceTree) AddLog(e pipelineError) {
+// addLog adds a log line to the current tree node.
+func (t *traceTree) addLog(e pipelineError) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.logs = append(t.logs, e)
 }
 
-func (t *traceTree) AddChild(ctx *ppContext, id, name string) {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	t.children = append(t.children, traceTree{
-		id:        id,
-		name:      name,
-		lock:      sync.Mutex{},
-		createdAt: time.Now(),
-	})
-	ctx.Context = context.WithValue(ctx.Context, key, &t.children[len(t.children)-1])
-}
-
+// Errors walks through the log tree returning all logs that match the filter.
 func (t *traceTree) Errors(lv LogLevelType) []error {
 	errs := make([]error, 0, len(t.children)+len(t.logs))
 	for i := range t.logs {
@@ -73,15 +65,7 @@ func (t *traceTree) Errors(lv LogLevelType) []error {
 	return errs
 }
 
-func (t *traceTree) getPipelineErrors() []pipelineError {
-	out := make([]pipelineError, len(t.logs))
-	copy(out, t.logs)
-	for i := range t.children {
-		out = append(out, t.children[i].getPipelineErrors()...)
-	}
-	return out
-}
-
+// BuildLogTree walks through the log tree printing all logs that match the criteria with indentation.
 func (t *traceTree) BuildLogTree(level LogLevelType, ident int) string {
 	var b strings.Builder
 	if ident > 0 {
@@ -102,10 +86,13 @@ func (t *traceTree) BuildLogTree(level LogLevelType, ident int) string {
 	return b.String()
 }
 
+// Error implements error interface.
 func (e pipelineError) Error() string {
 	return fmt.Sprintf("%s: %s", e.t.Format(time.RFC3339), e.err)
 }
 
+// initializeCtx tries to infer if the context was already initialized or not, setting
+// traceTree and section accordingly.
 func initializeCtx(old context.Context) (*ppContext, *traceTree) {
 	ctx := ppContext{old}
 	tree, ok := ctx.Value(key).(*traceTree)
@@ -123,12 +110,26 @@ func initializeCtx(old context.Context) (*ppContext, *traceTree) {
 	return &ctx, tree
 }
 
+// getTraceTree returns the log trace tree from context, it panics if not present.
 func getTraceTree(ctx context.Context) *traceTree {
 	tree, ok := ctx.Value(key).(*traceTree)
 	if !ok {
 		panic("logTree not in context")
 	}
 	return tree
+}
+
+// addNode adds a section to the traceTree.
+func (t *traceTree) addNode(ctx *ppContext, id, name string) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.children = append(t.children, traceTree{
+		id:        id,
+		name:      name,
+		lock:      sync.Mutex{},
+		createdAt: time.Now(),
+	})
+	ctx.Context = context.WithValue(ctx.Context, key, &t.children[len(t.children)-1])
 }
 
 // SetSection changes context values to reference old node id as parent, and new node id as current.
@@ -140,20 +141,18 @@ func (ctx *ppContext) SetSection(groupName string, nodeID ...string) {
 	} else {
 		id = uuid.NewString()
 	}
-	tree.AddChild(ctx, id, groupName)
+	tree.addNode(ctx, id, groupName)
 	return
 }
 
+// logMessage is responsible for adding a log to the current log node in context.
 func (ctx ppContext) logMessage(lv LogLevelType, message string, args ...any) {
-	if lv < LogLevel {
-		return
-	}
 	e := pipelineError{
 		lv:  lv,
 		t:   time.Now(),
 		err: fmt.Sprintf(message, args...),
 	}
-	getTraceTree(ctx).AddLog(e)
+	getTraceTree(ctx).addLog(e)
 	if DefaultLogger != nil && lv >= LogLevel {
 		DefaultLogger.Print(e.err)
 	}

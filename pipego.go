@@ -14,8 +14,9 @@ type (
 		Debug(message string, args ...any)
 		Info(message string, args ...any)
 		Warn(message string, args ...any)
-		WithTimeout(d time.Duration) (Context, context.CancelFunc)
-		WithCancel() (Context, context.CancelFunc)
+		WithTimeout(d time.Duration) (Context, CancelFunc)
+		WithCancel() (Context, CancelFunc)
+		WithCancelCause() (Context, CancelCausefunc)
 
 		// SetSection is used to section your code into sections, that you can name and trace them back after the execution.
 		// groupID is used to differentiate sections with same name, grouping sections under the same parent for example.
