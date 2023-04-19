@@ -21,7 +21,8 @@ type pipeline struct {
 	}
 
 	input  int
-	result int
+	sum    int
+	square int
 }
 
 func (p *pipeline) fetchInput(id string) pp.StepFunc {
@@ -33,15 +34,19 @@ func (p *pipeline) fetchInput(id string) pp.StepFunc {
 	}
 }
 
-func (p *pipeline) process(ctx pp.Context) (err error) {
-	p.result = p.input * p.input
-	ctx.Debug("result is %d", p.result)
+func (p *pipeline) sumInput(ctx pp.Context) (err error) {
+	p.sum = p.input + p.input
+	return
+}
+
+func (p *pipeline) sqrInput(ctx pp.Context) (err error) {
+	p.square = p.input * p.input
 	return
 }
 
 func main() {
 	ctx := context.Background()
-	pp.LogLevel = pp.Debug
+	pp.LogLevel = pp.Error
 	p := pipeline{
 		API: api{},
 	}
@@ -49,10 +54,13 @@ func main() {
 		retry.Constant(3, time.Second,
 			p.fetchInput("id"),
 		),
-		p.process,
+		pp.Parallel(2,
+			p.sumInput,
+			p.sqrInput,
+		),
 	)
 	if err != nil {
 		println(err.Error())
 	}
-	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, p.result)
+	fmt.Printf("Execution took %s.\n%#v\n", r.Duration, p)
 }
