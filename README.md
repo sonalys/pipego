@@ -11,6 +11,8 @@ This library has support for:
 - **Retriability**: choose from constant, linear and exponential backoffs for retrying any step.
 - **Load balance**: you can easily split slices and channels over go-routines using different algorithms.
 - **Plug and play api**: you can implement any middleware you want on top of pipego's API.
+- **Sections**: Divide your code execution into sections, you will be able to retrieve structured logs
+  by logLevel and section.
 
 ## Functions
 
@@ -37,6 +39,10 @@ Divides any given slice in groups of size `n` which can be processed parallel fo
 ### DivideSliceInGroups
 
 Does the same thing as DivideSliceInSize, but divide the slice into `n` groups instead.
+
+### ChanDivide
+
+Creates a pool of workers, which takes values from the provided channel `ch` as soon as the worker is available.
 
 ## Examples
 
