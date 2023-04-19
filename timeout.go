@@ -4,8 +4,6 @@ import (
 	"errors"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var TimeoutErr = errors.New("timeout")
@@ -17,10 +15,9 @@ func Timeout(d time.Duration, steps ...StepFunc) (out []StepFunc) {
 	out = make([]StepFunc, 0, len(steps))
 	var once sync.Once
 	var timer *time.Timer
-	timeoutID := uuid.NewString()
 	for _, step := range steps {
 		out = append(out, func(ctx Context) (err error) {
-			ctx.SetSection("timeout", timeoutID)
+			ctx = ctx.Section("timeout", "t = %s", d)
 			// Sets a cancellable context bounded to a unique timer, started when the first step is run.
 			ctx, cancel := ctx.WithCancelCause()
 			once.Do(func() {

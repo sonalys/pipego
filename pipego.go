@@ -2,6 +2,7 @@ package pp
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type (
 		Trace(message string, args ...any)
 		Debug(message string, args ...any)
 		Info(message string, args ...any)
+		Error(message string, args ...any)
 		Warn(message string, args ...any)
 		WithTimeout(d time.Duration) (Context, CancelFunc)
 		WithCancel() (Context, CancelFunc)
@@ -20,7 +22,7 @@ type (
 
 		// SetSection is used to section your code into sections, that you can name and trace them back after the execution.
 		// groupID is used to differentiate sections with same name, grouping sections under the same parent for example.
-		SetSection(groupName string, groupID ...string)
+		Section(name string, msgAndArgs ...any) Context
 	}
 
 	// StepFunc is a function signature,
@@ -32,24 +34,24 @@ type (
 	// Response holds information about the pipeline execution, such as section statistics and structured log tree.
 	Response struct {
 		Duration time.Duration
-		logTree  *traceTree
+		logTree  *logNode
 	}
 )
 
-func (p Response) Logs(level LogLevelType) (out []error) {
-	return p.logTree.Errors(level)
+func (p Response) Logs(lv LogLevelType) (out []string) {
+	return p.logTree.Logs(lv)
 }
 
-func (p Response) LogTree(level LogLevelType) string {
-	return p.logTree.BuildLogTree(level, 0)
+func (p Response) LogTree(lv LogLevelType) string {
+	return strings.Join(p.logTree.Tree(lv), "\n")
 }
 
 // Run receives a context, and runs all pipeline functions.
 // It runs until the first non-nil error or completion.
 func Run(old context.Context, steps ...StepFunc) (r Response, err error) {
 	t1 := time.Now()
-	var ctx Context
-	ctx, r.logTree = initializeCtx(old)
+	ctx := FromContext(old)
+	r.logTree = ctx.Value(key).(*logNode)
 	ctx.Trace("starting Run method with %d steps", len(steps))
 	err = runSteps(ctx, steps...)
 	r.Duration = time.Since(t1)
@@ -66,7 +68,6 @@ func runSteps(ctx Context, steps ...StepFunc) error {
 			return err
 		}
 		if err = step(ctx); err != nil {
-			ctx.Trace("step[%d] errored: %s. finishing execution", i, err)
 			return err
 		}
 	}

@@ -2,6 +2,7 @@ package pp
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -17,8 +18,17 @@ type CancelCausefunc context.CancelCauseFunc
 // NewContext creates a new pp.Context from context.Background().
 func NewContext() Context {
 	ctx := context.Background()
-	ctx, _ = initializeCtx(ctx)
-	return &ppContext{ctx}
+	return FromContext(ctx)
+}
+
+// NewContext creates a new pp.Context from context.Background().
+func FromContext(ctx context.Context) Context {
+	return &ppContext{context.WithValue(ctx, key, &logNode{
+		lv:      Info,
+		section: "root",
+		msg:     "new context initialized",
+		t:       time.Now(),
+	})}
 }
 
 // WithCancel is a wrapper for context.WithCancel, to facilitate with type convertion.
@@ -37,4 +47,22 @@ func (ctx ppContext) WithTimeout(d time.Duration) (Context, CancelFunc) {
 func (ctx ppContext) WithCancelCause() (Context, CancelCausefunc) {
 	new, cancel := context.WithCancelCause(ctx.Context)
 	return &ppContext{new}, CancelCausefunc(cancel)
+}
+
+func (ctx ppContext) Section(name string, msgAndArgs ...any) Context {
+	lock.Lock()
+	defer lock.Unlock()
+	entry := ctx.Value(key).(*logNode)
+	var msg string
+	if len(msgAndArgs) > 0 {
+		msg = fmt.Sprintf(msgAndArgs[0].(string), msgAndArgs[1:]...)
+	}
+	entry.children = append(entry.children, logNode{
+		lv:      Info,
+		section: name,
+		msg:     msg,
+	})
+	newCtx := context.WithValue(ctx.Context, key, &entry.children[len(entry.children)-1])
+	ctx.Context = newCtx
+	return ctx
 }

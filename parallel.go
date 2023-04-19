@@ -2,6 +2,7 @@ package pp
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -17,8 +18,7 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 			return ZeroParallelismErr
 		}
 		t1 := time.Now()
-		ctx.SetSection("parallel")
-		ctx.Trace("starting parallelism = %d with %d steps", n, len(steps))
+		ctx = ctx.Section("parallel", "n = %d steps = %d", n, len(steps))
 		ctx, cancel := ctx.WithCancel()
 		defer cancel()
 		// Semaphore for controlling parallelism level.
@@ -28,21 +28,18 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 
 		errChan := make(chan error, 1)
 		for i, step := range steps {
-			ctx.Trace("step[%d] is queued", i)
-			sem <- struct{}{}
-			ctx.Trace("step[%d] is running", i)
 			go func(i int, step StepFunc) {
+				ctx := ctx.Section(fmt.Sprintf("job-%d", i))
+				ctx.Trace("queued")
+				sem <- struct{}{}
+				ctx.Trace("running")
 				defer func() {
 					<-sem
 					wg.Done()
-					ctx.Trace("step[%d] is finished", i)
+					ctx.Trace("finished")
 				}()
-				if err := ctx.Err(); err != nil {
-					ctx.Trace("ctx is cancelled: %s. finishing execution", err)
-					return
-				}
 				if err := step(ctx); err != nil {
-					ctx.Trace("step[%d] failed: %s. finishing execution", i, err)
+					ctx.Trace("failed with error: %s", err)
 					errChan <- err
 					cancel()
 				}
@@ -53,7 +50,7 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 		wg.Wait()
 		ctx.Trace("closing errChan")
 		close(errChan)
-		ctx.Trace("Parallel method finished in %s", time.Since(t1))
+		ctx.Trace("parallel method finished in %s", time.Since(t1))
 		return <-errChan
 	}
 }
