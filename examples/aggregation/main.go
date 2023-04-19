@@ -48,9 +48,6 @@ func newPipeline(dep PipelineDependencies) Pipeline {
 func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 	return func(ctx pp.Context) (err error) {
 		s.values, err = s.dep.API.fetchData(ctx, id)
-		if err == nil {
-			ctx.Info("fetched %d objects", len(s.values))
-		}
 		return
 	}
 }
@@ -77,7 +74,6 @@ func (s *Pipeline) calcAverage(_ pp.Context) (err error) {
 }
 
 func main() {
-	pp.LogLevel = pp.Info
 	ctx := context.Background()
 	api := API{}
 	pipeline := newPipeline(PipelineDependencies{

@@ -27,9 +27,7 @@ type pipeline struct {
 
 func (p *pipeline) fetchInput(id string) pp.StepFunc {
 	return func(ctx pp.Context) (err error) {
-		ctx.Debug("fetching data for id: %s", id)
 		p.input, err = p.API.fetch(ctx, id)
-		ctx.Debug("response is %d with err: %v", p.input, err)
 		return
 	}
 }
@@ -46,7 +44,6 @@ func (p *pipeline) sqrInput(ctx pp.Context) (err error) {
 
 func main() {
 	ctx := context.Background()
-	pp.LogLevel = pp.Error
 	p := pipeline{
 		API: api{},
 	}

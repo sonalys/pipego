@@ -2,7 +2,7 @@ package pp
 
 import (
 	"context"
-	"strings"
+	"io"
 	"time"
 )
 
@@ -11,11 +11,7 @@ type (
 	// Capable of doing structured logging, sectioning and cancellations and timeouts.
 	Context interface {
 		context.Context
-		Trace(message string, args ...any)
-		Debug(message string, args ...any)
-		Info(message string, args ...any)
-		Error(message string, args ...any)
-		Warn(message string, args ...any)
+
 		WithTimeout(d time.Duration) (Context, CancelFunc)
 		WithCancel() (Context, CancelFunc)
 		WithCancelCause() (Context, CancelCausefunc)
@@ -23,6 +19,9 @@ type (
 		// SetSection is used to section your code into sections, that you can name and trace them back after the execution.
 		// groupID is used to differentiate sections with same name, grouping sections under the same parent for example.
 		Section(name string, msgAndArgs ...any) Context
+		// GetWriter is used to get current section io.Writer, this way you can plug and play
+		// with any golang's logger library by pointing it torwards this io.Writer on every step you want.
+		GetWriter() io.Writer
 	}
 
 	// StepFunc is a function signature,
@@ -34,37 +33,25 @@ type (
 	// Response holds information about the pipeline execution, such as section statistics and structured log tree.
 	Response struct {
 		Duration time.Duration
-		logTree  *logNode
+		LogNode  *LogNode
 	}
 )
-
-func (p Response) Logs(lv LogLevelType) (out []string) {
-	return p.logTree.Logs(lv)
-}
-
-func (p Response) LogTree(lv LogLevelType) string {
-	return strings.Join(p.logTree.Tree(lv), "\n")
-}
 
 // Run receives a context, and runs all pipeline functions.
 // It runs until the first non-nil error or completion.
 func Run(old context.Context, steps ...StepFunc) (r Response, err error) {
 	t1 := time.Now()
 	ctx := FromContext(old)
-	r.logTree = ctx.Value(key).(*logNode)
-	ctx.Trace("starting Run method with %d steps", len(steps))
+	r.LogNode = getLogNode(ctx)
 	err = runSteps(ctx, steps...)
 	r.Duration = time.Since(t1)
-	ctx.Trace("Run method finished in %s", r.Duration)
 	return r, err
 }
 
 func runSteps(ctx Context, steps ...StepFunc) error {
 	var err error
-	for i, step := range steps {
-		ctx.Trace("running step[%d]", i)
+	for _, step := range steps {
 		if err = ctx.Err(); err != nil {
-			ctx.Trace("ctx is cancelled: %s. finishing execution", err)
 			return err
 		}
 		if err = step(ctx); err != nil {

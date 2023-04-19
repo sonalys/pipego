@@ -74,7 +74,6 @@ func newRetry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
 				if err = step(ctx); err == nil {
 					break
 				}
-				ctx.Warn("retry failed #%d: %s", n+1, err.Error())
 				time.Sleep(r.Retry(n))
 			}
 			if err != nil {

@@ -25,17 +25,6 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, run)
 	})
-	t.Run("with warnings", func(t *testing.T) {
-		run := false
-		r, err := pp.Run(ctx, func(ctx pp.Context) (err error) {
-			run = true
-			ctx.Warn("warn")
-			return
-		})
-		require.NoError(t, err)
-		require.True(t, run)
-		require.Len(t, r.Logs(pp.Warn), 1)
-	})
 	t.Run("with duration", func(t *testing.T) {
 		run := false
 		delay := 100 * time.Millisecond

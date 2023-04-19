@@ -56,7 +56,6 @@ func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 }
 
 func main() {
-	pp.LogLevel = pp.Info
 	ctx := context.Background()
 	api := API{}
 	pipeline := newPipeline(PipelineDependencies{
@@ -69,12 +68,10 @@ func main() {
 		),
 		pp.ChanDivide(&pipeline.values,
 			func(ctx pp.Context, i int) (err error) {
-				ctx.Info("got value on worker 1: %d", i)
 				return
 			},
 			// Slower worker that will take longer to execute values.
-			func(ctx pp.Context, i int) (err error) {
-				ctx.Info("got value on worker 2: %d", i)
+			func(_ pp.Context, _ int) (err error) {
 				time.Sleep(2 * time.Second)
 				return
 			},

@@ -25,13 +25,11 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 	return func(ctx Context) (err error) {
 		ctx, cancel := ctx.WithCancel()
 		defer cancel()
-		ctx.Trace("initializing ChanDivide with %d worker(s)", len(workers))
 		for i := range workers {
 			// Spawns 1 routine for each worker, making them consume from job channel.
 			go func(i int) {
 				defer wg.Done()
 				for {
-					ctx.Trace("worker %d is waiting", i)
 					select {
 					// Case for worker waiting for a job.
 					case v, ok := <-*ch:
@@ -39,10 +37,8 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 						if !ok {
 							return
 						}
-						ctx.Trace("worker %d got a job", i)
 						// Execute job and cancel other jobs in case of error.
 						if err := workers[i](ctx, v); err != nil {
-							ctx.Trace("worker %d errored: %s", i, err)
 							errChan <- err
 							cancel()
 							return
@@ -54,10 +50,8 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 				}
 			}(i)
 		}
-		ctx.Trace("waiting for workers to close")
 		wg.Wait()
 		close(errChan)
-		ctx.Trace("channel is closed, exiting ChanDivide")
 		return <-errChan
 	}
 }
