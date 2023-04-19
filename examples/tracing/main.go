@@ -47,19 +47,19 @@ func main() {
 	//       2023-04-19T16:08:26+02:00: running step[0]
 	//       [parallel] n = 2 steps = 3
 	//               2023-04-19T16:08:26+02:00: waiting tasks to finish
-	//               [job-2]
+	//               [step-2]
 	//                       2023-04-19T16:08:26+02:00: queued
 	//                       2023-04-19T16:08:26+02:00: running
 	//                       [retry] n = 3 r = retry.constantRetry
 	//                               2023-04-19T16:08:26+02:00: retry failed #1: error
 	//                               2023-04-19T16:08:27+02:00: retry failed #2: error
 	//                               2023-04-19T16:08:28+02:00: retry failed #3: error
-	//               [job-0]
+	//               [step-0]
 	//                       2023-04-19T16:08:26+02:00: queued
 	//                       2023-04-19T16:08:26+02:00: running
 	//                       2023-04-19T16:08:26+02:00: parallel 0 warn
 	//                       2023-04-19T16:08:26+02:00: finished
-	//               [job-1]
+	//               [step-1]
 	//                       2023-04-19T16:08:26+02:00: queued
 	//                       2023-04-19T16:08:26+02:00: running
 	//                       2023-04-19T16:08:26+02:00: parallel 1 info

@@ -29,7 +29,7 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 		errChan := make(chan error, 1)
 		for i, step := range steps {
 			go func(i int, step StepFunc) {
-				ctx := ctx.Section(fmt.Sprintf("job-%d", i))
+				ctx := ctx.Section(fmt.Sprintf("step-%d", i))
 				ctx.Trace("queued")
 				sem <- struct{}{}
 				ctx.Trace("running")
