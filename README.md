@@ -170,7 +170,7 @@ func main() {
 	//                                 {"level":"error","message":"from inside retry"}
 	//                                 {"level":"error","message":"from inside retry"}
 	//                 [step-0]
-	//			   {"level":"error","message":"testing info"}
+	//			   {"level":"info","message":"testing info"}
 	//                 [step-1]
 	//                         [test section]
 	//                                 {"level":"error","message":"from inside section"}
