@@ -2,7 +2,6 @@ package pp
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 )
 
@@ -16,7 +15,6 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 		if n == 0 {
 			return ZeroParallelismErr
 		}
-		ctx = ctx.Section("parallel", "n = %d steps = %d", n, len(steps))
 		ctx, cancel := ctx.WithCancel()
 		defer cancel()
 		// Semaphore for controlling parallelism level.
@@ -27,7 +25,7 @@ func Parallel(n uint16, steps ...StepFunc) StepFunc {
 		errChan := make(chan error, len(steps))
 		for i, step := range steps {
 			go func(i int, step StepFunc) {
-				ctx := ctx.Section(fmt.Sprintf("step-%d", i))
+				AutomaticSection(ctx, step, i)
 				sem <- struct{}{}
 				defer func() {
 					<-sem

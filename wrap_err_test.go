@@ -8,7 +8,7 @@ import (
 )
 
 func TestWrapErr(t *testing.T) {
-	ctx := NewContext()
+	ctx := NewContext(false)
 	type args struct {
 		wrapper ErrorWrapper
 		steps   []StepFunc

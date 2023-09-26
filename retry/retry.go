@@ -68,8 +68,8 @@ func Exp(n int, initialDelay, maxDelay time.Duration, exp float64, steps ...pp.S
 // If retries = -1, it will retry until it succeeds.
 func newRetry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
 	return func(ctx pp.Context) (err error) {
-		ctx = ctx.Section("retry", "n = %d r = %T", retries, r)
-		for _, step := range steps {
+		for i, step := range steps {
+			pp.AutomaticSection(ctx, step, i)
 			for n := 0; n < retries || retries == -1; n++ {
 				if err = step(ctx); err == nil {
 					break

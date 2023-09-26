@@ -8,7 +8,7 @@ import (
 )
 
 func TestTimeout(t *testing.T) {
-	ctx := NewContext()
+	ctx := NewContext(false)
 	tests := []struct {
 		name string
 		run  func(t *testing.T)
@@ -33,7 +33,7 @@ func TestTimeout(t *testing.T) {
 				steps := Timeout(time.Second,
 					f, f, f,
 				)
-				_, err := Run(ctx, steps...)
+				_, err := New(steps...).Run(ctx)
 				require.NoError(t, err)
 				require.Equal(t, 3, a)
 			},
@@ -53,7 +53,7 @@ func TestTimeout(t *testing.T) {
 				steps := Timeout(time.Second,
 					f, f, f,
 				)
-				_, err := Run(ctx, steps...)
+				_, err := New(steps...).Run(ctx)
 				require.Error(t, err)
 				require.Equal(t, 2, a)
 			},

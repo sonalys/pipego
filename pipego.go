@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"time"
+
+	"github.com/sonalys/pipego/internal"
 )
 
 type (
@@ -30,30 +32,80 @@ type (
 	// A StepFunc is a job, that might never run, or might run until it succeeds.
 	StepFunc func(ctx Context) (err error)
 
+	Pipeline struct {
+		withSections          bool
+		withAutomaticSections bool
+		steps                 []StepFunc
+	}
+
 	// Response holds information about the pipeline execution, such as section statistics and structured log tree.
 	Response struct {
+		// Duration for the pipeline execution to finish with or without errors.
 		Duration time.Duration
-		LogNode  *LogNode
+		// If the pipeline is initialized with WithLogging flag, this field will allow you to fetch sectioned logging per
+		// step, being able to know in which function each log came from.
+		logTree *LogNode
 	}
 )
 
+func (r Response) LogTree(w io.Writer) {
+	if r.logTree != nil {
+		r.logTree.Tree(w)
+	}
+}
+
+func New(steps ...StepFunc) Pipeline {
+	return Pipeline{
+		withSections: false,
+		steps:        steps,
+	}
+}
+
+func WithSections() pipelineOption {
+	return func(p Pipeline) Pipeline {
+		p.withSections = true
+		return p
+	}
+}
+
+func WithAutomaticSections() pipelineOption {
+	return func(p Pipeline) Pipeline {
+		p.withAutomaticSections = true
+		return p
+	}
+}
+
+type pipelineOption func(p Pipeline) Pipeline
+
+func (p Pipeline) WithOptions(opts ...pipelineOption) Pipeline {
+	for _, f := range opts {
+		p = f(p)
+	}
+	return p
+}
+
 // Run receives a context, and runs all pipeline functions.
 // It runs until the first non-nil error or completion.
-func Run(old context.Context, steps ...StepFunc) (r Response, err error) {
+func (p Pipeline) Run(old context.Context) (r Response, err error) {
 	t1 := time.Now()
-	ctx := FromContext(old)
-	r.LogNode = getLogNode(ctx)
-	err = runSteps(ctx, steps...)
+	old = context.WithValue(old, internal.AutomaticSectionKey, p.withAutomaticSections)
+	old = context.WithValue(old, internal.SectionKey, p.withSections)
+	ctx := FromContext(old, p.withSections)
+	if p.withSections {
+		r.logTree = getLogNode(ctx)
+	}
+	err = runSteps(ctx, p.steps...)
 	r.Duration = time.Since(t1)
 	return r, err
 }
 
 func runSteps(ctx Context, steps ...StepFunc) error {
 	var err error
-	for _, step := range steps {
+	for i, step := range steps {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
+		AutomaticSection(ctx, step, i)
 		if err = step(ctx); err != nil {
 			return err
 		}

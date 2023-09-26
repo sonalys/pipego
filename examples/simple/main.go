@@ -47,7 +47,7 @@ func main() {
 	p := pipeline{
 		API: api{},
 	}
-	r, err := pp.Run(ctx,
+	r, err := pp.New(
 		retry.Constant(3, time.Second,
 			p.fetchInput("id"),
 		),
@@ -55,7 +55,7 @@ func main() {
 			p.sumInput,
 			p.sqrInput,
 		),
-	)
+	).Run(ctx)
 	if err != nil {
 		println(err.Error())
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 func Test_Parallel(t *testing.T) {
-	ctx := pp.NewContext()
+	ctx := pp.NewContext(false)
 	t.Run("empty", func(t *testing.T) {
 		err := pp.Parallel(5)(ctx)
 		require.NoError(t, err)

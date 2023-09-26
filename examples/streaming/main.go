@@ -61,7 +61,7 @@ func main() {
 	pipeline := newPipeline(PipelineDependencies{
 		API: api,
 	})
-	r, err := pp.Run(ctx,
+	r, err := pp.New(
 		// Setup a simple example of a streaming response.
 		retry.Constant(retry.Inf, time.Second,
 			pipeline.fetchValues("objectID"),
@@ -76,7 +76,7 @@ func main() {
 				return
 			},
 		),
-	)
+	).Run(ctx)
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
