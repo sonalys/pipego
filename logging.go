@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/sonalys/pipego/internal"
 )
@@ -24,14 +23,6 @@ type (
 		Parent   int
 		Section  string
 		Children []int
-	}
-
-	LogNode struct {
-		Section   []byte
-		Message   []byte
-		Parent    *LogNode
-		Children  []LogNode
-		Timestamp time.Time
 	}
 )
 
@@ -58,7 +49,7 @@ func (cd ContextData) Parent() (LogNodeV2, bool) {
 
 func AutomaticSection(ctx Context, step any, i int) Context {
 	if ok, _ := ctx.Value(internal.AutomaticSectionKey).(bool); ok {
-		ctx = ctx.Section(internal.GetFunctionName(step), "step=%d", i)
+		ctx = ctx.SetSection(internal.GetFunctionName(step), "step=%d", i)
 	}
 	return ctx
 }
@@ -69,31 +60,6 @@ var NewSectionFormatter = func(sectionName string, maskAndArgs []any) string {
 		return fmt.Sprintf("[%s] %s\n", sectionName, fmt.Sprintf(maskAndArgs[0].(string), maskAndArgs[1:]...))
 	}
 	return fmt.Sprintf("[%s]\n", sectionName)
-}
-
-func (l *LogNode) Write(p []byte) (n int, err error) {
-	lock.Lock()
-	defer lock.Unlock()
-	msg := make([]byte, len(p))
-	copy(msg, p)
-	l.Children = append(l.Children, LogNode{
-		Section:   l.Section,
-		Message:   msg,
-		Timestamp: time.Now(),
-	})
-	return len(p), nil
-}
-
-func (e LogNode) Logs(w io.Writer) {
-	w.Write(e.Message)
-	for i := range e.Children {
-		e.Children[i].Logs(w)
-	}
-	return
-}
-
-func (e LogNode) String() string {
-	return string(e.Message)
 }
 
 func (e ContextData) Tree(w io.Writer) {
@@ -110,7 +76,7 @@ func (cd ContextData) tree(w io.Writer, cur, indent int) {
 		if err != nil {
 			break
 		}
-		w.Write([]byte(strings.Repeat("\t", indent)))
+		w.Write([]byte(strings.Repeat("  ", indent)))
 		_, err = w.Write(line)
 		if err != nil {
 			break

@@ -82,7 +82,25 @@ func (ctx ppContext) GetWriter() io.Writer {
 	return cd.Current().Buffer
 }
 
-func (ctx ppContext) Section(name string, msgAndArgs ...any) Context {
+// GetSection returns the section name this context is in.
+func (ctx ppContext) GetSection() string {
+	cd, ok := ctx.Value(contextKey).(ContextData)
+	if !ok {
+		return ""
+	}
+	cur := cd.Current()
+	for {
+		if cur.Section != "" {
+			return cur.Section
+		}
+		cur, ok = cd.Parent()
+		if !ok {
+			return ""
+		}
+	}
+}
+
+func (ctx ppContext) SetSection(name string, msgAndArgs ...any) Context {
 	cd, ok := ctx.Value(contextKey).(ContextData)
 	if !ok {
 		return ctx
@@ -107,8 +125,9 @@ func (ctx ppContext) Section(name string, msgAndArgs ...any) Context {
 				Children: []int{lenLogs + 1},
 			},
 			LogNodeV2{
-				Parent: lenLogs,
-				Buffer: bytes.NewBuffer([]byte{}),
+				Parent:  lenLogs,
+				Section: name,
+				Buffer:  bytes.NewBuffer([]byte{}),
 			},
 		)
 		// Update parent ref to children.

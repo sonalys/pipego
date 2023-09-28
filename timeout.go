@@ -17,7 +17,7 @@ func Timeout(d time.Duration, steps ...StepFunc) (out []StepFunc) {
 	var timer *time.Timer
 	for _, step := range steps {
 		out = append(out, func(ctx Context) (err error) {
-			ctx = ctx.Section("timeout", "t = %s", d)
+			ctx = ctx.SetSection("timeout", "t = %s", d)
 			// Sets a cancellable context bounded to a unique timer, started when the first step is run.
 			ctx, cancel := ctx.WithCancelCause()
 			once.Do(func() {

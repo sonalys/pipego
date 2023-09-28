@@ -57,7 +57,7 @@ func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 }
 
 func getLogger(ctx pp.Context, sectionName string) zerolog.Logger {
-	ctx = ctx.Section(sectionName)
+	ctx = ctx.SetSection(sectionName)
 	return zerolog.New(ctx.GetWriter())
 }
 
