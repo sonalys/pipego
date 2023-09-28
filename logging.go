@@ -55,8 +55,8 @@ func AutomaticSection(ctx Context, step any, i int) Context {
 }
 
 // NewSectionFormatter is an injectable section formatter thant can be replaced by your custom log formatter.
-var NewSectionFormatter = func(sectionName string, maskAndArgs []any) string {
-	if len(maskAndArgs) > 0 {
+var NewSectionFormatter = func(sectionName string, maskAndArgs ...any) string {
+	if len(maskAndArgs) > 1 {
 		return fmt.Sprintf("[%s] %s\n", sectionName, fmt.Sprintf(maskAndArgs[0].(string), maskAndArgs[1:]...))
 	}
 	return fmt.Sprintf("[%s]\n", sectionName)

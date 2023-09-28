@@ -39,7 +39,7 @@ func FromContext(ctx context.Context) Context {
 	logs := []LogNodeV2{
 		{
 			Parent: -1,
-			Buffer: bytes.NewBufferString("[root]"),
+			Buffer: bytes.NewBufferString(NewSectionFormatter("root")),
 		},
 	}
 	return &ppContext{
