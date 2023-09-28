@@ -37,8 +37,9 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 						if !ok {
 							return
 						}
+						stepCtx := AutomaticSection(ctx, workers[i], i)
 						// Execute job and cancel other jobs in case of error.
-						if err := workers[i](ctx, v); err != nil {
+						if err := workers[i](stepCtx, v); err != nil {
 							errChan <- err
 							cancel()
 							return

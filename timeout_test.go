@@ -8,7 +8,7 @@ import (
 )
 
 func TestTimeout(t *testing.T) {
-	ctx := NewContext(false)
+	ctx := NewContext()
 	tests := []struct {
 		name string
 		run  func(t *testing.T)

@@ -44,14 +44,12 @@ type (
 		Duration time.Duration
 		// If the pipeline is initialized with WithLogging flag, this field will allow you to fetch sectioned logging per
 		// step, being able to know in which function each log came from.
-		logTree *LogNode
+		contextData ContextData
 	}
 )
 
 func (r Response) LogTree(w io.Writer) {
-	if r.logTree != nil {
-		r.logTree.Tree(w)
-	}
+	r.contextData.Tree(w)
 }
 
 func New(steps ...StepFunc) Pipeline {
@@ -90,9 +88,9 @@ func (p Pipeline) Run(old context.Context) (r Response, err error) {
 	t1 := time.Now()
 	old = context.WithValue(old, internal.AutomaticSectionKey, p.withAutomaticSections)
 	old = context.WithValue(old, internal.SectionKey, p.withSections)
-	ctx := FromContext(old, p.withSections)
+	ctx := FromContext(old)
 	if p.withSections {
-		r.logTree = getLogNode(ctx)
+		r.contextData = ctx.Value(contextKey).(ContextData)
 	}
 	err = runSteps(ctx, p.steps...)
 	r.Duration = time.Since(t1)
@@ -105,8 +103,8 @@ func runSteps(ctx Context, steps ...StepFunc) error {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
-		AutomaticSection(ctx, step, i)
-		if err = step(ctx); err != nil {
+		stepCtx := AutomaticSection(ctx, step, i)
+		if err = step(stepCtx); err != nil {
 			return err
 		}
 	}

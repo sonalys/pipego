@@ -1,8 +1,8 @@
 package pp
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"time"
@@ -10,29 +10,43 @@ import (
 	"github.com/sonalys/pipego/internal"
 )
 
-// ppContext represents our internal context handler,
-// Capable of doing structured logging, sectioning and cancellations and timeouts.
-type ppContext struct {
-	context.Context
-}
+type (
+	// ppContext represents our internal context handler,
+	// Capable of doing structured logging, sectioning and cancellations and timeouts.
+	ppContext struct {
+		context.Context
+	}
 
-type CancelFunc context.CancelFunc
-type CancelCausefunc context.CancelCauseFunc
+	CancelFunc      context.CancelFunc
+	CancelCausefunc context.CancelCauseFunc
+
+	ContextData struct {
+		logs    *[]LogNodeV2
+		current int
+	}
+)
+
+var contextKey = key(-1)
 
 // NewContext creates a new pp.Context from context.Background().
-func NewContext(withSections bool) Context {
+func NewContext() Context {
 	ctx := context.Background()
-	return FromContext(ctx, withSections)
+	return FromContext(ctx)
 }
 
 // NewContext creates a new pp.Context from context.Background().
-func FromContext(ctx context.Context, withSections bool) Context {
-	node := LogNode{
-		Section: []byte("root"),
-		Message: []byte(NewSectionFormatter("root", "new context initialized")),
+func FromContext(ctx context.Context) Context {
+	logs := []LogNodeV2{
+		{
+			Parent: -1,
+			Buffer: bytes.NewBufferString("[root]"),
+		},
 	}
 	return &ppContext{
-		Context: context.WithValue(ctx, contextKey, &node),
+		Context: context.WithValue(ctx, contextKey, ContextData{
+			logs:    &logs,
+			current: 0,
+		}),
 	}
 }
 
@@ -61,45 +75,53 @@ func (ctx ppContext) WithCancelCause() (Context, CancelCausefunc) {
 }
 
 func (ctx ppContext) GetWriter() io.Writer {
-	node := getLogNode(ctx)
-	if node == nil {
+	cd, ok := ctx.Value(contextKey).(ContextData)
+	if !ok {
 		return log.Writer()
 	}
-	return node
-}
-
-func getLogNode(ctx context.Context) *LogNode {
-	return ctx.Value(contextKey).(*LogNode)
-}
-
-func AutomaticSection(ctx Context, step any, i int) {
-	if ok, _ := ctx.Value(internal.AutomaticSectionKey).(bool); ok {
-		ctx = ctx.Section(internal.GetFunctionName(step), "step=%d", i)
-	}
+	return cd.Current().Buffer
 }
 
 func (ctx ppContext) Section(name string, msgAndArgs ...any) Context {
-	if withSections, _ := ctx.Value(internal.SectionKey).(bool); withSections {
+	cd, ok := ctx.Value(contextKey).(ContextData)
+	if !ok {
+		return ctx
+	}
+	if withSections, _ := ctx.Value(internal.SectionKey).(bool); !withSections {
 		return ctx
 	}
 	lock.Lock()
 	defer lock.Unlock()
-	entry := getLogNode(ctx)
-	if entry == nil {
-		return ctx
-	}
-	var msg string
-	if len(msgAndArgs) > 0 {
-		msg = NewSectionFormatter(name, fmt.Sprintf(msgAndArgs[0].(string), msgAndArgs[1:]...))
+
+	sectionIndex := cd.FindSection(name)
+	lenLogs := len(*cd.logs)
+	var cur int
+	// If a section header already exists, we don't need to create a new one.
+	if sectionIndex == -1 {
+		*cd.logs = append(*cd.logs,
+			// Section header with indentation level X.
+			LogNodeV2{
+				Parent:   cd.current,
+				Section:  name,
+				Buffer:   bytes.NewBufferString(NewSectionFormatter(name, msgAndArgs)),
+				Children: []int{lenLogs + 1},
+			},
+			LogNodeV2{
+				Parent: lenLogs,
+				Buffer: bytes.NewBuffer([]byte{}),
+			},
+		)
+		// Update parent ref to children.
+		(*cd.logs)[cd.current].Children = append((*cd.logs)[cd.current].Children, lenLogs)
+		cur = lenLogs + 1
 	} else {
-		msg = fmt.Sprintf("[%s]\n", name)
+		// Existing section headers will only have 1 child.
+		cur = (*cd.logs)[sectionIndex].Children[0]
 	}
-	entry.Children = append(entry.Children, LogNode{
-		Section: []byte(name),
-		Message: []byte(msg),
-	})
-	newCtx := context.WithValue(ctx.Context, contextKey, &entry.Children[len(entry.Children)-1])
 	return ppContext{
-		Context: newCtx,
+		Context: context.WithValue(ctx.Context, contextKey, ContextData{
+			logs:    cd.logs,
+			current: cur,
+		}),
 	}
 }

@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
+	"github.com/rs/zerolog"
 	pp "github.com/sonalys/pipego"
 	"github.com/sonalys/pipego/retry"
 )
@@ -55,6 +56,11 @@ func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 	}
 }
 
+func getLogger(ctx pp.Context, sectionName string) zerolog.Logger {
+	ctx = ctx.Section(sectionName)
+	return zerolog.New(ctx.GetWriter())
+}
+
 func main() {
 	ctx := context.Background()
 	api := API{}
@@ -68,30 +74,46 @@ func main() {
 		),
 		pp.ChanDivide(&pipeline.values,
 			func(ctx pp.Context, i int) (err error) {
+				logger := getLogger(ctx, "worker 1")
+				logger.Info().Msgf("got value %d", i)
 				return
 			},
 			// Slower worker that will take longer to execute values.
-			func(_ pp.Context, _ int) (err error) {
+			func(ctx pp.Context, i int) (err error) {
+				logger := getLogger(ctx, "worker 2")
+				logger.Info().Msgf("got value %d", i)
 				time.Sleep(2 * time.Second)
 				return
 			},
 		),
-	).Run(ctx)
+	).
+		// WithSections allows us to use our pp.Context.Section function, segmentating logs by sections
+		// Pipego is capable of using reflection to automatically segmentate functions by name.
+		WithOptions(
+			pp.WithAutomaticSections(),
+			pp.WithSections(),
+		).
+		Run(ctx)
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
-	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, pipeline)
-	// go run examples/streaming/main.go                                                                            1 ↵
-	// 2023/04/19 09:32:02 got value on worker 2: 5
-	// 2023/04/19 09:32:03 got value on worker 1: 5
-	// 2023/04/19 09:32:04 got value on worker 1: 3
-	// 2023/04/19 09:32:05 got value on worker 2: 1
-	// 2023/04/19 09:32:06 got value on worker 1: 3
-	// 2023/04/19 09:32:07 got value on worker 1: 6
-	// 2023/04/19 09:32:08 got value on worker 2: 4
-	// 2023/04/19 09:32:09 got value on worker 1: 9
-	// 2023/04/19 09:32:10 got value on worker 1: 8
-	// 2023/04/19 09:32:11 got value on worker 1: 2
-	// 2023/04/19 09:32:12 got value on worker 2: 2
-	// Execution took 12.00069829s.
+	r.LogTree(os.Stdout)
+	// [root]
+	//       [main.main.Constant.newRetry.func6] step=0
+	//                       [main.main.(*Pipeline).fetchValues.func3] step=0
+	//       [github.com/sonalys/pipego.ChanDivide[...].func1] step=1
+	//                       [main.main.func2] step=1
+	//                                       [worker 2]
+	//                                               {"level":"info","message":"got value 4"}
+	//                                               {"level":"info","message":"got value 6"}
+	//                                               {"level":"info","message":"got value 5"}
+	//                                               {"level":"info","message":"got value 5"}
+	//                       [main.main.func1] step=0
+	//                                       [worker 1]
+	//                                               {"level":"info","message":"got value 2"}
+	//                                               {"level":"info","message":"got value 1"}
+	//                                               {"level":"info","message":"got value 7"}
+	//                                               {"level":"info","message":"got value 3"}
+	//                                               {"level":"info","message":"got value 5"}
+	//                                               {"level":"info","message":"got value 4"}
 }

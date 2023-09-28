@@ -8,7 +8,7 @@ import (
 )
 
 func TestChanDivide(t *testing.T) {
-	ctx := NewContext(false)
+	ctx := NewContext()
 	// Since we are obliged to work with channel pointers in this context, we need this tricky function to get
 	// the casting right.
 	getCh := func() (chan int, *<-chan int) {
