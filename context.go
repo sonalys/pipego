@@ -3,6 +3,7 @@ package pp
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"time"
@@ -21,7 +22,7 @@ type (
 	CancelCausefunc context.CancelCauseFunc
 
 	ContextData struct {
-		logs    *[]LogNodeV2
+		logs    *[]LogNode
 		current int
 	}
 )
@@ -36,7 +37,7 @@ func NewContext() Context {
 
 // NewContext creates a new pp.Context from context.Background().
 func FromContext(ctx context.Context) Context {
-	logs := []LogNodeV2{
+	logs := []LogNode{
 		{
 			Parent: -1,
 			Buffer: bytes.NewBufferString(NewSectionFormatter("root")),
@@ -74,12 +75,41 @@ func (ctx ppContext) WithCancelCause() (Context, CancelCausefunc) {
 	}, CancelCausefunc(cancel)
 }
 
+// GetWriter returns a unique writer for the current context section.
+// You can use this function to segmentate logs per section.
 func (ctx ppContext) GetWriter() io.Writer {
 	cd, ok := ctx.Value(contextKey).(ContextData)
 	if !ok {
 		return log.Writer()
 	}
 	return cd.Current().Buffer
+}
+
+func defaultPathRetrieve(cd ContextData, cur LogNode) string {
+	if cur.Parent == -1 {
+		return cur.Section
+	}
+	parent := (*cd.logs)[cur.Parent]
+	if parent.Section == "" {
+		return defaultPathRetrieve(cd, (*cd.logs)[parent.Parent])
+	}
+	if parent.Section == cur.Section {
+		return fmt.Sprintf("%s.%s", defaultPathRetrieve(cd, (*cd.logs)[parent.Parent]), cur.Section)
+	}
+	return fmt.Sprintf("%s.%s", defaultPathRetrieve(cd, parent), cur.Section)
+}
+
+// RecursivePathRetrieve is a configurable function for retrieving context section full path
+// You can specify your own custom function for formatting the full path.
+var RecursivePathRetrieve = defaultPathRetrieve
+
+// GetPath returns the full path of the current section.
+func (ctx ppContext) GetPath() string {
+	cd, ok := ctx.Value(contextKey).(ContextData)
+	if !ok {
+		return ""
+	}
+	return RecursivePathRetrieve(cd, cd.Current())
 }
 
 // GetSection returns the section name this context is in.
@@ -118,13 +148,13 @@ func (ctx ppContext) SetSection(name string, msgAndArgs ...any) Context {
 	if sectionIndex == -1 {
 		*cd.logs = append(*cd.logs,
 			// Section header with indentation level X.
-			LogNodeV2{
+			LogNode{
 				Parent:   cd.current,
 				Section:  name,
 				Buffer:   bytes.NewBufferString(NewSectionFormatter(name, msgAndArgs)),
 				Children: []int{lenLogs + 1},
 			},
-			LogNodeV2{
+			LogNode{
 				Parent:  lenLogs,
 				Section: name,
 				Buffer:  bytes.NewBuffer([]byte{}),

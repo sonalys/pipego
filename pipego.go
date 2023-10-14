@@ -22,6 +22,7 @@ type (
 		// groupID is used to differentiate sections with same name, grouping sections under the same parent for example.
 		SetSection(name string, msgAndArgs ...any) Context
 		GetSection() string
+		GetPath() string
 		// GetWriter is used to get current section io.Writer, this way you can plug and play
 		// with any golang's logger library by pointing it torwards this io.Writer on every step you want.
 		GetWriter() io.Writer

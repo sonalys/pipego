@@ -18,7 +18,7 @@ var (
 )
 
 type (
-	LogNodeV2 struct {
+	LogNode struct {
 		Buffer   io.ReadWriter
 		Parent   int
 		Section  string
@@ -35,14 +35,14 @@ func (cd ContextData) FindSection(name string) int {
 	return -1
 }
 
-func (cd ContextData) Current() LogNodeV2 {
+func (cd ContextData) Current() LogNode {
 	return (*cd.logs)[cd.current]
 }
 
-func (cd ContextData) Parent() (LogNodeV2, bool) {
+func (cd ContextData) Parent() (LogNode, bool) {
 	parentID := (*cd.logs)[cd.current].Parent
 	if parentID == -1 {
-		return LogNodeV2{}, false
+		return LogNode{}, false
 	}
 	return (*cd.logs)[parentID], true
 }

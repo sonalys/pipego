@@ -6,34 +6,34 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog"
 	pp "github.com/sonalys/pipego"
 	"github.com/sonalys/pipego/retry"
+	"golang.org/x/exp/slog"
 )
 
-func getLogger(ctx pp.Context) zerolog.Logger {
-	return zerolog.New(ctx.GetWriter()).
-		With().
-		Str("section", ctx.GetSection()). // You can even put the section inside your logger, for filtering later.
-		Logger()
+func getLogger(ctx pp.Context) slog.Logger {
+	return *slog.New(slog.NewJSONHandler(ctx.GetWriter(), nil)).With(slog.Attr{
+		Key:   "section",
+		Value: slog.AnyValue(ctx.GetPath()),
+	})
 }
 
 func funcA(ctx pp.Context) (err error) {
 	log := getLogger(ctx)
-	log.Info().Msg("testing info")
+	log.Info("testing info")
 	return
 }
 
 func funcB(ctx pp.Context) (err error) {
 	ctx = ctx.SetSection("test section")
 	log := getLogger(ctx)
-	log.Error().Msg("from inside section")
+	log.Error("from inside section")
 	return
 }
 
 func funcC(ctx pp.Context) (err error) {
 	log := getLogger(ctx)
-	log.Error().Msg("from inside retry")
+	log.Error("from inside retry")
 	return errors.New("error")
 }
 

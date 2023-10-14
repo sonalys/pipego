@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog"
 	pp "github.com/sonalys/pipego"
 	"github.com/sonalys/pipego/retry"
+	"golang.org/x/exp/slog"
 )
 
 // API is a generic API implementation.
@@ -56,9 +56,11 @@ func (s *Pipeline) fetchValues(id string) pp.StepFunc {
 	}
 }
 
-func getLogger(ctx pp.Context, sectionName string) zerolog.Logger {
-	ctx = ctx.SetSection(sectionName)
-	return zerolog.New(ctx.GetWriter())
+func getLogger(ctx pp.Context, sectionName string) slog.Logger {
+	return *slog.New(slog.NewJSONHandler(ctx.GetWriter(), nil)).With(slog.Attr{
+		Key:   "section",
+		Value: slog.AnyValue(sectionName),
+	})
 }
 
 func main() {
@@ -75,13 +77,13 @@ func main() {
 		pp.ChanDivide(&pipeline.values,
 			func(ctx pp.Context, i int) (err error) {
 				logger := getLogger(ctx, "worker 1")
-				logger.Info().Msgf("got value %d", i)
+				logger.Info("got value %d", i)
 				return
 			},
 			// Slower worker that will take longer to execute values.
 			func(ctx pp.Context, i int) (err error) {
 				logger := getLogger(ctx, "worker 2")
-				logger.Info().Msgf("got value %d", i)
+				logger.Info("got value %d", i)
 				time.Sleep(2 * time.Second)
 				return
 			},
