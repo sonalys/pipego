@@ -1,12 +1,14 @@
 package pp
 
 import (
+	"context"
+
 	"github.com/samber/lo"
 )
 
 // Group takes any amount of steps and return a single step that bounds them all.
 func Group(steps ...StepFunc) StepFunc {
-	return func(ctx Context) (err error) {
+	return func(ctx context.Context) (err error) {
 		return runSteps(ctx, steps...)
 	}
 }

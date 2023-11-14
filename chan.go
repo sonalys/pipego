@@ -1,9 +1,12 @@
 package pp
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // ChanWorker defines a function signature to process values returned from a channel.
-type ChanWorker[T any] func(Context, T) error
+type ChanWorker[T any] func(context.Context, T) error
 
 // ChanDivide divides the input of a channel between all the given workers,
 // they process load as they are free to do so.
@@ -22,8 +25,8 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 	wg.Add(len(workers))
 	// We also define an errChan to get the first error to happen and return it.
 	errChan := make(chan error, len(workers))
-	return func(ctx Context) (err error) {
-		ctx, cancel := ctx.WithCancel()
+	return func(ctx context.Context) (err error) {
+		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		for i := range workers {
 			// Spawns 1 routine for each worker, making them consume from job channel.
@@ -37,14 +40,13 @@ func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
 						if !ok {
 							return
 						}
-						stepCtx := AutomaticSection(ctx, workers[i], i)
 						// Execute job and cancel other jobs in case of error.
-						if err := workers[i](stepCtx, v); err != nil {
+						if err := workers[i](ctx, v); err != nil {
 							errChan <- err
 							cancel()
 							return
 						}
-					// Context cancellation, all jobs must end.
+					// context.Context cancellation, all jobs must end.
 					case <-ctx.Done():
 						return
 					}

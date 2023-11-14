@@ -1,6 +1,7 @@
 package pp
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 )
 
 func TestTimeout(t *testing.T) {
-	ctx := NewContext()
+	ctx := context.Background()
 	tests := []struct {
 		name string
 		run  func(t *testing.T)
@@ -26,14 +27,14 @@ func TestTimeout(t *testing.T) {
 			name: "dont timeout",
 			run: func(t *testing.T) {
 				a := 0
-				f := func(_ Context) (err error) {
+				f := func(_ context.Context) (err error) {
 					a++
 					return
 				}
 				steps := Timeout(time.Second,
 					f, f, f,
 				)
-				_, err := New(steps...).Run(ctx)
+				err := Run(ctx, steps...)
 				require.NoError(t, err)
 				require.Equal(t, 3, a)
 			},
@@ -42,7 +43,7 @@ func TestTimeout(t *testing.T) {
 			name: "timeout",
 			run: func(t *testing.T) {
 				a := 0
-				f := func(ctx Context) (err error) {
+				f := func(ctx context.Context) (err error) {
 					time.Sleep(400 * time.Millisecond)
 					if ctx.Err() != nil {
 						return
@@ -53,7 +54,7 @@ func TestTimeout(t *testing.T) {
 				steps := Timeout(time.Second,
 					f, f, f,
 				)
-				_, err := New(steps...).Run(ctx)
+				err := Run(ctx, steps...)
 				require.Error(t, err)
 				require.Equal(t, 2, a)
 			},

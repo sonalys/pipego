@@ -1,6 +1,7 @@
 package pp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,7 @@ func TestDivideSliceInSize(t *testing.T) {
 		var count int
 		return &count, func(_ int) StepFunc {
 			count++
-			return func(ctx Context) (err error) {
+			return func(ctx context.Context) (err error) {
 				return nil
 			}
 		}
@@ -47,7 +48,7 @@ func TestDivideSliceInGroups(t *testing.T) {
 		var count int
 		return &count, func(_ int) StepFunc {
 			count++
-			return func(ctx Context) (err error) {
+			return func(ctx context.Context) (err error) {
 				return nil
 			}
 		}

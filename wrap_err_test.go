@@ -1,6 +1,7 @@
 package pp
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -8,7 +9,7 @@ import (
 )
 
 func TestWrapErr(t *testing.T) {
-	ctx := NewContext()
+	ctx := context.Background()
 	type args struct {
 		wrapper ErrorWrapper
 		steps   []StepFunc
@@ -26,7 +27,7 @@ func TestWrapErr(t *testing.T) {
 					return fmt.Errorf("mock")
 				},
 				steps: []StepFunc{
-					func(ctx Context) (err error) {
+					func(ctx context.Context) (err error) {
 						return fmt.Errorf("test")
 					},
 				},

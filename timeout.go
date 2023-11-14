@@ -1,6 +1,7 @@
 package pp
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -16,10 +17,9 @@ func Timeout(d time.Duration, steps ...StepFunc) (out []StepFunc) {
 	var once sync.Once
 	var timer *time.Timer
 	for _, step := range steps {
-		out = append(out, func(ctx Context) (err error) {
-			ctx = ctx.SetSection("timeout", "t = %s", d)
+		out = append(out, func(ctx context.Context) (err error) {
 			// Sets a cancellable context bounded to a unique timer, started when the first step is run.
-			ctx, cancel := ctx.WithCancelCause()
+			ctx, cancel := context.WithCancelCause(ctx)
 			once.Do(func() {
 				timer = time.NewTimer(d)
 			})

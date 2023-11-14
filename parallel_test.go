@@ -1,6 +1,7 @@
 package pp_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func Test_Parallel(t *testing.T) {
-	ctx := pp.NewContext()
+	ctx := context.Background()
 	t.Run("empty", func(t *testing.T) {
 		err := pp.Parallel(5)(ctx)
 		require.NoError(t, err)
@@ -23,13 +24,13 @@ func Test_Parallel(t *testing.T) {
 		}
 		var s state
 		go pp.Parallel(2,
-			func(_ pp.Context) (err error) {
+			func(_ context.Context) (err error) {
 				s.a = 1
 				ready.Done()
 				wg.Wait()
 				return nil
 			},
-			func(_ pp.Context) (err error) {
+			func(_ context.Context) (err error) {
 				s.b = 2
 				ready.Done()
 				wg.Wait()
@@ -51,13 +52,13 @@ func Test_Parallel(t *testing.T) {
 		var s state
 		go require.NotPanics(t, func() {
 			err := pp.Parallel(1,
-				func(_ pp.Context) (err error) {
+				func(_ context.Context) (err error) {
 					s.a = 1
 					ready.Done()
 					wg.Wait()
 					return nil
 				},
-				func(_ pp.Context) (err error) {
+				func(_ context.Context) (err error) {
 					s.b = 1
 					ready.Done() // If you set parallelism = 2 you will see this panics, because weight is 1.
 					wg.Wait()

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 type API struct{}
 
 // fetchData implements a generic data fetcher signature.
-func (a API) fetchData(_ pp.Context, id string) ([]int, error) {
+func (a API) fetchData(_ context.Context, id string) ([]int, error) {
 	// Here we are simply implementing a failure mechanism to test our retriability.
 	switch n := rand.Intn(10); {
 	case n < 3:
@@ -27,7 +26,7 @@ func (a API) fetchData(_ pp.Context, id string) ([]int, error) {
 
 type PipelineDependencies struct {
 	API interface {
-		fetchData(_ pp.Context, id string) ([]int, error)
+		fetchData(_ context.Context, id string) ([]int, error)
 	}
 }
 
@@ -46,25 +45,25 @@ func newPipeline(dep PipelineDependencies) Pipeline {
 }
 
 func (s *Pipeline) fetchValues(id string) pp.StepFunc {
-	return func(ctx pp.Context) (err error) {
+	return func(ctx context.Context) (err error) {
 		s.values, err = s.dep.API.fetchData(ctx, id)
 		return
 	}
 }
 
-func (s *Pipeline) calcSum(_ pp.Context) (err error) {
+func (s *Pipeline) calcSum(_ context.Context) (err error) {
 	for _, v := range s.values {
 		s.Sum += v
 	}
 	return
 }
 
-func (s *Pipeline) calcCount(_ pp.Context) (err error) {
+func (s *Pipeline) calcCount(_ context.Context) (err error) {
 	s.Count = len(s.values)
 	return
 }
 
-func (s *Pipeline) calcAverage(_ pp.Context) (err error) {
+func (s *Pipeline) calcAverage(_ context.Context) (err error) {
 	// simple example of aggregation error.
 	if s.Count == 0 {
 		return errors.New("cannot calculate average for empty slice")
@@ -79,7 +78,7 @@ func main() {
 	pipeline := newPipeline(PipelineDependencies{
 		API: api,
 	})
-	r, err := pp.New(
+	err := pp.Run(ctx,
 		retry.Constant(retry.Inf, time.Second,
 			pipeline.fetchValues("objectID"),
 		),
@@ -88,12 +87,9 @@ func main() {
 			pipeline.calcCount,
 		),
 		pipeline.calcAverage,
-	).Run(ctx)
+	)
 	if err != nil {
 		println("could not execute pipeline: ", err.Error())
 	}
-	fmt.Printf("Execution took %s.\n%+v\n", r.Duration, pipeline)
-	// 2023/04/19 09:24:46 fetched 5 objects
-	// Execution took 157.831µs.
 	// {dep:{API:{}} values:[1 2 3 4 5] Sum:15 AVG:3 Count:5}
 }

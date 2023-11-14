@@ -1,6 +1,7 @@
 package pp
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -8,7 +9,7 @@ import (
 )
 
 func TestChanDivide(t *testing.T) {
-	ctx := NewContext()
+	ctx := context.Background()
 	// Since we are obliged to work with channel pointers in this context, we need this tricky function to get
 	// the casting right.
 	getCh := func() (chan int, *<-chan int) {
@@ -19,7 +20,7 @@ func TestChanDivide(t *testing.T) {
 	}
 	t.Run("empty", func(t *testing.T) {
 		ch, recv := getCh()
-		step := ChanDivide(recv, func(_ Context, i int) error {
+		step := ChanDivide(recv, func(_ context.Context, i int) error {
 			return fmt.Errorf("failed")
 		})
 		close(ch)
@@ -28,9 +29,9 @@ func TestChanDivide(t *testing.T) {
 	})
 	t.Run("context cancelled", func(t *testing.T) {
 		ch, recv := getCh()
-		ctx, cancel := ctx.WithCancel()
+		ctx, cancel := context.WithCancel(ctx)
 		value := 0
-		step := ChanDivide(recv, func(_ Context, _ int) error {
+		step := ChanDivide(recv, func(_ context.Context, _ int) error {
 			value = 1
 			return fmt.Errorf("failed")
 		})
@@ -43,7 +44,7 @@ func TestChanDivide(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ch, recv := getCh()
 		value := 0
-		step := ChanDivide(recv, func(_ Context, i int) error {
+		step := ChanDivide(recv, func(_ context.Context, i int) error {
 			value = i
 			return nil
 		})
