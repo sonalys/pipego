@@ -1,19 +1,16 @@
 package pp
 
 import (
-	"errors"
 	"sync"
 )
-
-var ZeroParallelismErr = errors.New("parallelism is set to 0")
 
 // Parallel runs all the given steps in parallel,
 // It cancels context for the first non-nil error and returns.
 // It runs 'n' go-routines at a time.
 func Parallel(n uint16, steps ...StepFunc) StepFunc {
 	return func(ctx Context) (err error) {
-		if n == 0 {
-			return ZeroParallelismErr
+		if n <= 0 {
+			n = uint16(len(steps))
 		}
 		ctx, cancel := ctx.WithCancel()
 		defer cancel()

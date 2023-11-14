@@ -14,10 +14,6 @@ func Test_Parallel(t *testing.T) {
 		err := pp.Parallel(5)(ctx)
 		require.NoError(t, err)
 	})
-	t.Run("0 parallelism", func(t *testing.T) {
-		err := pp.Parallel(0)(ctx)
-		require.Equal(t, pp.ZeroParallelismErr, err)
-	})
 	t.Run("is parallel", func(t *testing.T) {
 		var wg, ready sync.WaitGroup
 		wg.Add(1)
