@@ -2,8 +2,6 @@ package pp
 
 import (
 	"context"
-
-	"github.com/samber/lo"
 )
 
 // Group takes any amount of steps and return a single step that bounds them all.
@@ -13,12 +11,34 @@ func Group(steps ...StepFunc) StepFunc {
 	}
 }
 
+// Chunk returns an array of elements split into groups the length of size. If array can't be split evenly,
+// the final chunk will be the remaining elements.
+// Play: https://go.dev/play/p/EeKl0AuTehH
+func Chunk[T any](collection []T, size int) [][]T {
+	if size <= 0 {
+		panic("second parameter must be greater than 0")
+	}
+	chunksNum := len(collection) / size
+	if len(collection)%size != 0 {
+		chunksNum += 1
+	}
+	result := make([][]T, 0, chunksNum)
+	for i := 0; i < chunksNum; i++ {
+		last := (i + 1) * size
+		if last > len(collection) {
+			last = len(collection)
+		}
+		result = append(result, collection[i*size:last])
+	}
+	return result
+}
+
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
 // `n` must be greater than 0 or it will panic.
 func DivideSliceInSize[T any](
 	s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
-	for _, chunk := range lo.Chunk(s, n) {
+	for _, chunk := range Chunk(s, n) {
 		batch := make([]StepFunc, len(chunk))
 		for _, v := range chunk {
 			batch = append(batch, stepFactory(v))

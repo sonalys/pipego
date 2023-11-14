@@ -25,6 +25,7 @@ func TestChanDivide(t *testing.T) {
 		})
 		close(ch)
 		err := step(ctx)
+
 		require.NoError(t, err)
 	})
 	t.Run("context cancelled", func(t *testing.T) {

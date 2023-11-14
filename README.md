@@ -101,7 +101,7 @@ func main() {
 	p := pipeline{
 		API: api{},
 	}
-	r, err := pp.Run(ctx,
+	err := pp.Run(ctx,
 		retry.Constant(3, time.Second,
 			p.fetchInput("id"),
 		),
