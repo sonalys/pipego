@@ -23,7 +23,7 @@ func Test_Parallel(t *testing.T) {
 			a, b int
 		}
 		var s state
-		go pp.Parallel(2,
+		err := pp.Parallel(2,
 			func(_ context.Context) (err error) {
 				s.a = 1
 				ready.Done()
@@ -38,6 +38,7 @@ func Test_Parallel(t *testing.T) {
 			},
 		)(ctx)
 		ready.Wait()
+		require.NoError(t, err)
 		require.Equal(t, 1, s.a)
 		require.Equal(t, 2, s.b)
 		wg.Done()

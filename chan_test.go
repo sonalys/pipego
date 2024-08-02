@@ -14,8 +14,7 @@ func TestChanDivide(t *testing.T) {
 	// the casting right.
 	getCh := func() (chan int, *<-chan int) {
 		ch := make(chan int, 1)
-		var recv <-chan int
-		recv = ch
+		var recv <-chan int = ch
 		return ch, &recv
 	}
 	t.Run("empty", func(t *testing.T) {
