@@ -101,6 +101,7 @@ func main() {
 	p := pipeline{
 		API: api{},
 	}
+	t1 := time.Now()
 	err := pp.Run(ctx,
 		retry.Constant(3, time.Second,
 			p.fetchInput("id"),
@@ -113,7 +114,7 @@ func main() {
 	if err != nil {
 		println(err.Error())
 	}
-	fmt.Printf("Execution took %s.\n%#v\n", r.Duration, p)
+	fmt.Printf("Execution took %s.\n%#v\n", time.Since(t1), p)
 	// Execution took 82.54µs.
 	// main.pipeline{API:main.api{}, input:4, sum:8, square:16}
 }
