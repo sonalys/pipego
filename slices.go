@@ -5,23 +5,16 @@ import (
 	"slices"
 )
 
-// Group takes any amount of steps and return a single step that bounds them all.
-func Group(steps ...StepFunc) StepFunc {
-	return func(ctx context.Context) (err error) {
-		return runSteps(ctx, steps...)
-	}
-}
-
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
 // `n` must be greater than 0 or it will panic.
 func DivideSliceInSize[T any](s []T, n int, stepFactory func(T) StepFunc) (steps Steps) {
 	for chunk := range slices.Chunk(s, n) {
-		batch := make(Steps, len(chunk))
+		batch := make(Steps, 0, len(chunk))
 		for _, v := range chunk {
 			batch = append(batch, stepFactory(v))
 		}
-		steps = append(steps, Group(batch...))
+		steps = append(steps, batch.Group())
 	}
 	return steps
 }
@@ -48,11 +41,11 @@ func divideSliceInGroups[T any](s []T, n int) [][]T {
 // then it uses a step factory to generate steps for each group.
 func DivideSliceInGroups[T any](s []T, n int, stepFactory func(T) StepFunc) (steps Steps) {
 	for _, chunk := range divideSliceInGroups(s, n) {
-		batch := make(Steps, len(chunk))
+		batch := make(Steps, 0, len(chunk))
 		for _, v := range chunk {
 			batch = append(batch, stepFactory(v))
 		}
-		steps = append(steps, Group(batch...))
+		steps = append(steps, batch.Group())
 	}
 	return steps
 }
@@ -63,5 +56,5 @@ func ForEach[T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
 	for i := range s {
 		batch = append(batch, stepFactory(s[i], i))
 	}
-	return Group(batch...)
+	return batch.Group()
 }
