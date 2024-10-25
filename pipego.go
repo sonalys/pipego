@@ -10,6 +10,8 @@ type (
 	// It's created on the pipeline initialization, and runs during the `Run` function.
 	// A StepFunc is a job, that might never run, or might run until it succeeds.
 	StepFunc func(ctx context.Context) (err error)
+
+	Steps []StepFunc
 )
 
 // Run receives a context, and runs all pipeline functions.
@@ -29,4 +31,10 @@ func runSteps(ctx context.Context, steps ...StepFunc) error {
 		}
 	}
 	return err
+}
+
+func (s Steps) Group() func(context.Context) error {
+	return func(ctx context.Context) (err error) {
+		return runSteps(ctx, s...)
+	}
 }

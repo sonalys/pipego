@@ -15,9 +15,9 @@ func Group(steps ...StepFunc) StepFunc {
 // DivideSliceInSize receives a slice `s` and divide it into groups with `n` elements each,
 // then it uses a step factory to generate steps for each group.
 // `n` must be greater than 0 or it will panic.
-func DivideSliceInSize[T any](s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
+func DivideSliceInSize[T any](s []T, n int, stepFactory func(T) StepFunc) (steps Steps) {
 	for chunk := range slices.Chunk(s, n) {
-		batch := make([]StepFunc, len(chunk))
+		batch := make(Steps, len(chunk))
 		for _, v := range chunk {
 			batch = append(batch, stepFactory(v))
 		}
@@ -46,9 +46,9 @@ func divideSliceInGroups[T any](s []T, n int) [][]T {
 
 // DivideSliceInGroups receives a slice `s` and divide it into `n` groups,
 // then it uses a step factory to generate steps for each group.
-func DivideSliceInGroups[T any](s []T, n int, stepFactory func(T) StepFunc) (steps []StepFunc) {
+func DivideSliceInGroups[T any](s []T, n int, stepFactory func(T) StepFunc) (steps Steps) {
 	for _, chunk := range divideSliceInGroups(s, n) {
-		batch := make([]StepFunc, len(chunk))
+		batch := make(Steps, len(chunk))
 		for _, v := range chunk {
 			batch = append(batch, stepFactory(v))
 		}
@@ -59,7 +59,7 @@ func DivideSliceInGroups[T any](s []T, n int, stepFactory func(T) StepFunc) (ste
 
 // ForEach takes a slice `s` and a stepFactory, and creates a step for each element inside.
 func ForEach[T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
-	batch := []StepFunc{}
+	batch := Steps{}
 	for i := range s {
 		batch = append(batch, stepFactory(s[i], i))
 	}
