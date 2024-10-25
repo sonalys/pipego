@@ -12,7 +12,7 @@ func TestWrapErr(t *testing.T) {
 	ctx := context.Background()
 	type args struct {
 		wrapper ErrorWrapper
-		steps   []StepFunc
+		steps   Steps
 	}
 	tests := []struct {
 		name string
@@ -26,7 +26,7 @@ func TestWrapErr(t *testing.T) {
 				wrapper: func(err error) error {
 					return fmt.Errorf("mock")
 				},
-				steps: []StepFunc{
+				steps: Steps{
 					func(ctx context.Context) (err error) {
 						return fmt.Errorf("test")
 					},

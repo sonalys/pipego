@@ -8,9 +8,9 @@ import (
 )
 
 func TestDivideSliceInSize(t *testing.T) {
-	mockFactory := func() (*int, func(i int) StepFunc) {
+	mockFactory := func() (*int, func(i int) Step) {
 		var count int
-		return &count, func(_ int) StepFunc {
+		return &count, func(_ int) Step {
 			count++
 			return func(ctx context.Context) (err error) {
 				return nil
@@ -44,9 +44,9 @@ func TestDivideSliceInSize(t *testing.T) {
 }
 
 func TestDivideSliceInGroups(t *testing.T) {
-	mockFactory := func() (*int, func(i int) StepFunc) {
+	mockFactory := func() (*int, func(i int) Step) {
 		var count int
-		return &count, func(_ int) StepFunc {
+		return &count, func(_ int) Step {
 			count++
 			return func(ctx context.Context) (err error) {
 				return nil

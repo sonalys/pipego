@@ -24,7 +24,7 @@ type pipeline struct {
 	square int
 }
 
-func (p *pipeline) fetchInput(id string) pp.StepFunc {
+func (p *pipeline) fetchInput(id string) pp.Step {
 	return func(ctx context.Context) (err error) {
 		p.input, err = p.API.fetch(ctx, id)
 		return
