@@ -1,7 +1,6 @@
 package pp
 
 import (
-	"context"
 	"slices"
 )
 
@@ -52,7 +51,7 @@ func DivideSliceInGroups[T any](s []T, n int, stepFactory func(T) StepFunc) (ste
 
 // ForEach takes a slice `s` and a stepFactory, and creates a step for each element inside.
 func ForEach[T any](s []T, stepFactory func(T, int) StepFunc) StepFunc {
-	batch := Steps{}
+	batch := make(Steps, 0, len(s))
 	for i := range s {
 		batch = append(batch, stepFactory(s[i], i))
 	}
