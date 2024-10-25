@@ -48,7 +48,7 @@ func newPipeline(dep PipelineDependencies) Pipeline {
 	}
 }
 
-func (s *Pipeline) fetchValues(id string) pp.StepFunc {
+func (s *Pipeline) fetchValues(id string) pp.Step {
 	return func(ctx context.Context) (err error) {
 		s.values = s.dep.API.fetchData(ctx, id)
 		return

@@ -12,7 +12,7 @@ var TimeoutErr = errors.New("timeout")
 // Timeout limits all children steps to execute in the given duration,
 // the timer starts when the first step is run.
 // All steps shares the same timeout.
-func Timeout(d time.Duration, steps ...StepFunc) (out Steps) {
+func Timeout(d time.Duration, steps ...Step) (out Steps) {
 	out = make(Steps, 0, len(steps))
 	var once sync.Once
 	var timer *time.Timer

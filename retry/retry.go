@@ -25,7 +25,7 @@ func (r constantRetry) Retry(n int) time.Duration {
 // Constant is a constant retry implementation.
 // It always return the same delay.
 // Example: 2s: 2s, 2s, 2s, 2s...
-func Constant(n int, delay time.Duration, steps ...pp.StepFunc) pp.StepFunc {
+func Constant(n int, delay time.Duration, steps ...pp.Step) pp.Step {
 	return newRetry(n, constantRetry{delay}, steps...)
 }
 
@@ -40,7 +40,7 @@ func (r linearRetry) Retry(n int) time.Duration {
 // Linear is a linear retry implementation.
 // It returns a linear series for the delay calculation.
 // Example: 1s: 1s, 2s, 3s, 4s, ...
-func Linear(n int, delay time.Duration, steps ...pp.StepFunc) pp.StepFunc {
+func Linear(n int, delay time.Duration, steps ...pp.Step) pp.Step {
 	return newRetry(n, linearRetry{delay}, steps...)
 }
 
@@ -61,13 +61,13 @@ func (r expRetry) Retry(n int) time.Duration {
 // Exp is a exponential retry implementation.
 // Given an initialDelay, it does (initialDelay * n) ^ exp.
 // Example: n ^ 2 + 1s = 1s, 3s, 9s...
-func Exp(n int, initialDelay, maxDelay time.Duration, exp float64, steps ...pp.StepFunc) pp.StepFunc {
+func Exp(n int, initialDelay, maxDelay time.Duration, exp float64, steps ...pp.Step) pp.Step {
 	return newRetry(n, expRetry{initialDelay, maxDelay, exp}, steps...)
 }
 
 // Retry implements a pipeline step for retrying all children steps inside.
 // If retries = -1, it will retry until it succeeds.
-func newRetry(retries int, r Retrier, steps ...pp.StepFunc) pp.StepFunc {
+func newRetry(retries int, r Retrier, steps ...pp.Step) pp.Step {
 	return func(ctx context.Context) (err error) {
 		for _, step := range steps {
 			for n := 0; n < retries || retries == -1; n++ {

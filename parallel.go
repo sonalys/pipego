@@ -2,44 +2,28 @@ package pp
 
 import (
 	"context"
-	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Parallel runs all the given steps in parallel,
 // It cancels context for the first non-nil error and returns.
 // It runs 'n' go-routines at a time.
-func Parallel(n uint16, steps ...StepFunc) StepFunc {
+func Parallel(n uint16, steps ...Step) Step {
 	return func(ctx context.Context) (err error) {
 		if n <= 0 {
 			n = uint16(len(steps))
 		}
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		// Semaphore for controlling parallelism level.
-		sem := make(chan struct{}, n)
-		wg := sync.WaitGroup{}
-		wg.Add(len(steps))
 
-		errChan := make(chan error, len(steps))
-		for i, step := range steps {
-			go func(i int, step StepFunc) {
-				sem <- struct{}{}
-				defer func() {
-					<-sem
-					wg.Done()
-				}()
-				if err := ctx.Err(); err != nil {
-					return
-				}
-				if err := step(ctx); err != nil {
-					errChan <- err
-					cancel()
-				}
-			}(i, step)
+		errgrp, ctx := errgroup.WithContext(ctx)
+		errgrp.SetLimit(int(n))
+
+		for _, step := range steps {
+			errgrp.Go(func() error {
+				return step(ctx)
+			})
 		}
-		// We wait for all steps to either succeed, or gracefully shutdown if context is cancelled.
-		wg.Wait()
-		close(errChan)
-		return <-errChan
+
+		return errgrp.Wait()
 	}
 }

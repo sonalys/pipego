@@ -16,7 +16,7 @@ type ChanWorker[T any] func(context.Context, T) error
 // ChanDivide must be used inside a `parallel` section,
 // unless the channel providing values is in another go-routine.
 // ChanDivide and the provided chan in the same go-routine will dead-lock.
-func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) StepFunc {
+func ChanDivide[T any](ch *<-chan T, workers ...ChanWorker[T]) Step {
 	if ch == nil {
 		panic("cannot use nil chan pointer")
 	}
