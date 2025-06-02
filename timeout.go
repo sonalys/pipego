@@ -2,44 +2,40 @@ package pp
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 )
-
-var TimeoutErr = errors.New("timeout")
 
 // Timeout limits all children steps to execute in the given duration,
 // the timer starts when the first step is run.
 // All steps shares the same timeout.
 func Timeout(d time.Duration, steps ...Step) (out Steps) {
 	out = make(Steps, 0, len(steps))
-	var once sync.Once
-	var timer *time.Timer
+	getTimer := sync.OnceValue(func() *time.Timer { return time.NewTimer(d) })
 	for _, step := range steps {
-		out = append(out, func(ctx context.Context) (err error) {
+		enclosedStep := func(ctx context.Context) (err error) {
 			// Sets a cancellable context bounded to a unique timer, started when the first step is run.
 			ctx, cancel := context.WithCancelCause(ctx)
-			once.Do(func() {
-				timer = time.NewTimer(d)
-			})
-			out := make(chan error, 1)
-			defer close(out)
+			defer cancel(context.DeadlineExceeded)
+
+			resultCh := make(chan error, 1)
+			defer close(resultCh)
+
 			go func() {
-				out <- step(ctx)
+				resultCh <- step(ctx)
 			}()
-			// Select gets the first channel to return a result,
-			// either context cancellation, timeout or response from step.
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-timer.C:
-				cancel(TimeoutErr)
-				return TimeoutErr
-			case err := <-out:
+			case <-getTimer().C:
+				cancel(context.DeadlineExceeded)
+				return context.DeadlineExceeded
+			case err := <-resultCh:
 				return err
 			}
-		})
+		}
+		out = append(out, enclosedStep)
 	}
 	return
 }
